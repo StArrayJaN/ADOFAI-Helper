@@ -1,7 +1,8 @@
-.gradle
+.gradle/
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/
+push.sh
 
 ### IntelliJ IDEA ###
 .idea/modules.xml
