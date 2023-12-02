@@ -1,0 +1,32 @@
+plugins {
+    id 'java'
+}
+
+group = 'thercn.adofai.helper'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+task run(type: JavaExec) {
+    main = 'thercn.adofai.helper.Level'
+    classpath = sourceSets.main.runtimeClasspath
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'thercn.adofai.helper.Level'
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+dependencies {
+    implementation 'org.json:json:20231013'
+}
+
+test {
+    useJUnitPlatform()
+}

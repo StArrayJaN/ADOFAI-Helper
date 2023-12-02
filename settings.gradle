@@ -1,0 +1,8 @@
+pluginManagement {
+  repositories {
+    maven { url 'https://jitpack.io' }
+    google()
+    mavenCentral()
+  }
+}
+rootProject.name = 'ADOFAI-Helper'
