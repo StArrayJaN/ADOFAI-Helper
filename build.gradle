@@ -12,6 +12,7 @@ repositories {
 task run(type: JavaExec) {
     main = 'thercn.adofai.helper.Level'
     classpath = sourceSets.main.runtimeClasspath
+    systemProperty 'java.library.path', 'binary/'
 }
 
 jar {

@@ -1,16 +1,17 @@
 package thercn.adofai.helper;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class Level {
 	JSONObject level;
@@ -21,23 +22,21 @@ public class Level {
 
 	public static void main(String[] args) {
 		try {
-			//System.loadLibrary("key");
+			System.loadLibrary("key");
 			//
 			//System.loadLibrary("项目1");
-			Level level = Level.readLevelFile("/sdcard/levels/593/level.adofai");
+			Level level = Level.readLevelFile("/sdcard/level.adofai");
 			System.out.println("当前文件为" + level.currentLevelFile);
 			System.out.println("获取到" + level.getCharts().size() + "个轨道");
 			System.out.println("BPM:" + level.getBPM());
 			System.out.println("偏移:" + level.getOffset());
 			System.out.println("获取到" + level.getEvents() + "个事件");
-            level.setLevelSetting("bpm",598);
-            level.previewAndSave();
-            
 			//runMacro(level);
 		} catch (IOException|JSONException e) {
 			e.printStackTrace();
 		}
     }
+    
 	static void runMacro(Level l) throws JSONException {
 		JSONObject chart = l.toJSONObject();
 		JSONArray parsedChart = new JSONArray();
@@ -137,7 +136,7 @@ public class Level {
 				if (o.getBoolean("midr")) {
 					curAngle = curAngle + 180;
 				}
-				noteTime.add(curTime - 0.01);
+				noteTime.add(curTime);
 			}
 
 		}
@@ -188,7 +187,7 @@ public class Level {
     public static Level readLevelFile(String filePath) throws JSONException,IOException {
 		currentLevelFile = filePath;
         File file = new File(filePath);
-		BufferedReader reader = new BufferedReader(new FileReader(file));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(Files.newInputStream(file.toPath()),"UTF-8"));
 		StringBuilder content = new StringBuilder();
 		String line;
 		while ((line = reader.readLine()) != null) {
@@ -250,11 +249,11 @@ public class Level {
 		return settings.getInt("countdownTicks");
 	}
 
-    public String getSetting(String setting) {
+    public String getSetting(String setting) throws JSONException{
     	return settings.get(setting).toString();
     }
     
-    public void setLevelSetting(String key,Object value) {
+    public void setLevelSetting(String key,Object value) throws JSONException {
     	settings.put(key,value);
     }
     
