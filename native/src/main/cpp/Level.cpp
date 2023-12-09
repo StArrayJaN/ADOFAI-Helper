@@ -117,6 +117,8 @@ void simulateKeyPress(int keyCode);
 void sleep(double mil);
 void keyPressThread(ThreadSafeQueue<int> *keyQueue);
 int packInt(int low, int high);
+template <typename T, class = typename std::enable_if_t<!std::is_unsigned_v<T>>>
+inline typename std::make_unsigned_t<T> mabs(T _val);
 
 extern "C" JNIEXPORT void JNICALL Java_thercn_adofai_helper_Level_start(JNIEnv *env, jclass clazz, jdoubleArray valuesObj)
 {
@@ -149,46 +151,54 @@ extern "C" JNIEXPORT void JNICALL Java_thercn_adofai_helper_Level_start(JNIEnv *
     auto currentTime = 0.0;
     auto nextTime = 0.0;
     auto offsetTime = 0.0;
-    auto beforeTime = std::chrono::steady_clock().now();
+    auto beforeTime = std::chrono::high_resolution_clock().now();
     unsigned eventNumber = 1;
 
-    auto afterTime = std::chrono::steady_clock().now();
-    auto timeNanoseconds = std::chrono::duration<double, std::nano>(afterTime - beforeTime).count();
-    beforeTime = afterTime;
-    auto delayTime = currentTime - nextTime;
+    auto afterTime = beforeTime;
+    auto timeNanoseconds = 0;
+    auto delayTime = 0.0;
     ThreadSafeQueue<int> *keyQueue = new ThreadSafeQueue<int>();
 
     thread keyPressThreadInstance(keyPressThread, keyQueue); // ×ÓÏß³Ì
     keyPressThreadInstance.detach();
 
-    while (eventNumber < keyEvents.size())
+    while (true)
     {
-
-        while (delayTime < offsetTime)
+        if (eventNumber >= keyEvents.size())
         {
-            afterTime = std::chrono::steady_clock().now();
-            timeNanoseconds = std::chrono::duration<double, std::nano>(afterTime - beforeTime).count();
-            currentTime += timeNanoseconds;
-            beforeTime = afterTime;
-            delayTime = currentTime - nextTime;
+            break;
         }
 
-        if (eventNumber >= 1)
+        afterTime = std::chrono::high_resolution_clock().now();
+        timeNanoseconds = std::chrono::duration<double, std::nano>(afterTime - beforeTime).count();
+        currentTime += timeNanoseconds;
+        beforeTime = afterTime;
+        delayTime = currentTime - nextTime;
+
+        if (delayTime < offsetTime)
         {
-            // pack low bit
-            keyQueue->Push(packInt(1, std::get<1>(keyEvents[eventNumber - 1])));
+            continue;
         }
 
+        // pack low bit
         keyQueue->Push(packInt(2, std::get<1>(keyEvents[eventNumber])));
+        keyQueue->Push(packInt(1, std::get<1>(keyEvents[eventNumber - 1])));
 
         eventNumber++;
-        nextTime = std::get<0>(keyEvents[eventNumber]);
-        offsetTime = -delayTime;
+        
 
-        if (offsetTime < -140000)
+        offsetTime = -mabs((int)delayTime);
+        nextTime = std::get<0>(keyEvents[eventNumber]) + offsetTime;
+
+        if (offsetTime > 250000)
         {
             offsetTime = 0;
         }
+
+        afterTime = std::chrono::high_resolution_clock().now();
+        timeNanoseconds = std::chrono::duration<double, std::nano>(afterTime - beforeTime).count();
+        currentTime += timeNanoseconds;
+        beforeTime = afterTime;
 
         // std::cout << eventNumber << nextTime << currentTime << " time: " << offsetTime << std::endl;
 
@@ -214,6 +224,13 @@ void simulateKeyPress(int keyCode)
 int packInt(int low, int high)
 {
     return (high << 16) | low;
+}
+
+template <typename T, class = typename std::enable_if_t<!std::is_unsigned_v<T>>>
+inline typename std::make_unsigned_t<T> mabs(T _val)
+{
+    const T mask = _val >> (sizeof(T) * 8 - 1);
+    return (_val ^ mask) - mask;
 }
 
 void sleep(double mil)
