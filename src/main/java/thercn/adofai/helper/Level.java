@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -118,7 +119,7 @@ public class Level {
 
         List<Double> noteTime = new ArrayList<>();
         //noteTime.add(0.0);
-        if (true) {
+        {
             double curAngle = 0;
             double curBPM = l.getBPM();
             double curTime = angleToTime((double) l.settings.getInt("countdownTicks") * 180 - 180, curBPM);//《-这里需要修改
@@ -249,7 +250,7 @@ public class Level {
                     .chars()
                     .mapToObj(c -> (char) c)
                     .map(TileAngle.angleCharMap::get)
-                    .toList();
+                    .collect(Collectors.toList());
 
             double staticAngle = 0d;
 
