@@ -27,7 +27,7 @@ dependencies {
     implementation 'org.json:json:20231013'
 }
 
-def nativeProject = project(":native")
+def nativeProject = findProject(":native")
 
 if (nativeProject != null) {
     run.dependsOn ':native:linkDebug'
