@@ -26,7 +26,7 @@ public class Level {
             System.loadLibrary("key");
             //
             //System.loadLibrary("项目1");
-            Level level = Level.readLevelFile("E:\\adofai\\Frums - We want to run\\We Want To Nerf.adofai");
+            Level level = Level.readLevelFile("E:\\adofai\\81. Kobaryo - Windows 10000\\10000.adofai");
             System.out.println("当前文件为" + level.currentLevelFile);
             System.out.println("获取到" + level.getCharts().size() + "个轨道");
             System.out.println("BPM:" + level.getBPM());
@@ -39,7 +39,6 @@ public class Level {
     }
 
     static void runMacro(Level l) throws JSONException {
-        JSONObject chart = l.toJSONObject();
         JSONArray parsedChart = new JSONArray();
         int midrCount = 0;
         List<Integer> midrId = new ArrayList<>();
@@ -145,10 +144,13 @@ public class Level {
 
         }
         System.out.println("处理完成,按W开始");
+        // double offsetTime = 0;
         double[] n = new double[noteTime.size()];
         for (int i = 0; i < noteTime.size(); i++) {
             n[i] = noteTime.get(i);
+            //     n[i] = offsetTime;
         }
+        System.out.println(Arrays.toString(n));
         start(n);
         //return;
 
