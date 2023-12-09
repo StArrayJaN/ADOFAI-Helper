@@ -1,8 +1,12 @@
 pluginManagement {
-  repositories {
-    maven { url 'https://jitpack.io' }
-    google()
-    mavenCentral()
-  }
+    repositories {
+        maven { url 'https://jitpack.io' }
+        google()
+        mavenCentral()
+    }
 }
 rootProject.name = 'ADOFAI-Helper'
+def currentOs = org.gradle.internal.os.OperatingSystem.current()
+if (currentOs.windows) {
+    include('native')
+}

@@ -10,11 +10,10 @@ repositories {
 }
 
 task run(type: JavaExec) {
-    main = 'thercn.adofai.helper.Level'
+    mainClass = 'thercn.adofai.helper.Level'
     classpath = sourceSets.main.runtimeClasspath
     systemProperty 'java.library.path', 'binary/'
 }
-
 jar {
     manifest {
         attributes 'Main-Class': 'thercn.adofai.helper.Level'
@@ -28,6 +27,15 @@ dependencies {
     implementation 'org.json:json:20231013'
 }
 
+def nativeProject = project(":native")
+
+if (nativeProject != null) {
+    run.dependsOn ':native:linkDebug'
+
+    tasks.findByPath(":assemble").dependsOn ':native:linkDebug'
+}
+
 test {
     useJUnitPlatform()
 }
+

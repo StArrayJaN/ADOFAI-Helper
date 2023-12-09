@@ -1,0 +1,56 @@
+import org.gradle.internal.jvm.Jvm
+
+/*
+ * There is currently no "C application" plugin, so this build uses the "C++ application" plugin and then reconfigures it
+ * to build C instead.
+ */
+plugins {
+    id 'cpp-library'
+}
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+library {
+    binaries.configureEach { CppBinary binary ->
+        def compileTask = binary.compileTask.get()
+        compileTask.includes.from("${Jvm.current().javaHome}/include")
+
+        def osFamily = binary.targetPlatform.targetMachine.operatingSystemFamily
+        if (osFamily.macOs) {
+            compileTask.includes.from("${Jvm.current().javaHome}/include/darwin")
+        } else if (osFamily.linux) {
+            compileTask.includes.from("${Jvm.current().javaHome}/include/linux")
+        } else if (osFamily.windows) {
+            compileTask.includes.from("${Jvm.current().javaHome}/include/win32")
+        }
+
+        compileTask.source.from fileTree(dir: "src/main/cpp", include: "**/*.cpp")
+
+        def toolChain = binary.toolChain
+        // Define toolchain-specific compiler options
+        if (toolChain in [Gcc, Clang]) {
+            compileTask.compilerArgs.addAll(['-O2', '-fno-access-control', '-luser32'])
+        } else if (toolChain in VisualCpp) {
+            compileTask.compilerArgs.addAll(['/Zi', '/O2', '/link user32.lib'])
+        }
+
+
+    }
+}
+
+def copyTask = tasks.register("copyBinary", Copy) {
+    dependsOn("assemble")
+    from("build/lib/main/debug") {
+        include '*.dll'
+    }
+    into("../binary")
+    rename { String filename ->
+        filename.replace("native", "key")
+    }
+}
+
+tasks.findByName("assemble").finalizedBy(copyTask)
+
+
+
