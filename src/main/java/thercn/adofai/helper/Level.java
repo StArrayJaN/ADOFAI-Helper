@@ -38,6 +38,54 @@ public class Level {
         }
     }
 
+    static void convertToOld(Level level) throws JSONException,IOException{
+		String reomveSettings[] = { "speedTrialAim",
+			"trackTexture",
+			"trackTextureScale",
+			"showDefaultBGTile",
+			"defaultBGTileColor",
+			"defaultBGShapeType",
+			"defaultBGShapeColor",
+			"defaultTextColor",
+			"defaultTextShadowColor",
+			"congratsText",
+			"perfectText",
+			"imageSmoothing",
+			"scalingRatio" };
+
+		String newSettingValue[] = {"showDefaultBGIfNoImage",
+			"separateCountdownTime",
+			"separateCountdownTime",
+			"seizureWarning",
+			"lockRot",
+			"loopBG",
+			"scalingRatio",
+			"pulseOnFloor",
+			"startCamLowVFX",
+			"loopVideo",
+			"floorIconOutlines",
+			"stickToFloors" };
+		String ntrue = "Enabled";
+		String nfalse = "Disabled";
+		for (int i = 0; i < newSettingValue.length; i++) {
+			if (level.hasSetting(newSettingValue[i])) {
+				if (newSettingValue[i].equals("scalingRatio")) {
+					level.setLevelSetting("unscaledSize", level.settings.getInt("scalingRatio"));
+				}
+				if (!newSettingValue[i].equals("scalingRatio") && level.getSetting(newSettingValue[i]).equals("true")) {
+					level.setLevelSetting(newSettingValue[i], ntrue);
+				}
+				if (!newSettingValue[i].equals("scalingRatio") && level.getSetting(newSettingValue[i]).equals("false")) {
+					level.setLevelSetting(newSettingValue[i], nfalse);
+				}
+			}
+		}
+		for (int i = 0; i < reomveSettings.length; i++) {
+			level.removeLevelSetting(reomveSettings[i]);
+		}
+		level.setLevelSetting("version",12);
+		level.previewAndSave();
+	}
     static void runMacro(Level l) throws JSONException {
         JSONArray parsedChart = new JSONArray();
         int midrCount = 0;
@@ -302,6 +350,20 @@ public class Level {
         settings.put(key, value);
     }
 
+    public void removeLevelSetting(String key) throws JSONException {
+        settings.remove(key);
+    }
+
+	public boolean hasSetting(String key) {
+		try
+		{
+			settings.get(key);
+			return true;
+		} catch (JSONException e) {
+			return false;
+		}
+	}
+	
     public Double[] bpmMultiplierToBPM(List<String[]> bpmList) throws JSONException {
         double bpm = getBPM();
         Double newbpmList[] = new Double[bpmList.size()];
