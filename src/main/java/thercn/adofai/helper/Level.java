@@ -23,10 +23,10 @@ public class Level {
 
     public static void main(String[] args) {
         try {
-            System.loadLibrary("key");
+            //System.loadLibrary("key");
             //
             //System.loadLibrary("项目1");
-            Level level = Level.readLevelFile("E:\\adofai\\81. Kobaryo - Windows 10000\\10000.adofai");
+            Level level = Level.readLevelFile("/storage/emulated/0/levels/Solypsis VIP [All]/level.adofai");
             System.out.println("当前文件为" + level.currentLevelFile);
             System.out.println("获取到" + level.getCharts().size() + "个轨道");
             System.out.println("BPM:" + level.getBPM());
@@ -86,7 +86,7 @@ public class Level {
 		level.setLevelSetting("version",12);
 		level.previewAndSave();
 	}
-    static void runMacro(Level l) throws JSONException {
+    static void runMacro(Level l) throws JSONException,IOException {
         JSONArray parsedChart = new JSONArray();
         int midrCount = 0;
         List<Integer> midrId = new ArrayList<>();
@@ -105,32 +105,30 @@ public class Level {
                 double angle = fmod(angleData, 360);
                 JSONObject temp = new JSONObject();
                 temp.put("angle", angle);
-                temp.put("midr", "false");
-                temp.put("direction", 0);
                 temp.put("bpm", "unSet");
+                temp.put("direction", 0);
                 temp.put("extraHold", 0);
+                temp.put("midr", "false");
                 parsedChart.put(i - midrCount, temp);
             }
         }
-        double bpm = l.getBPM();
+        double bpm = (float)l.getBPM();
 
         for (int i = 0; i < l.events.length(); i++) {
             JSONObject o = l.events.getJSONObject(i);
             int tile = o.getInt("floor");
             String event = o.get("eventType").toString();
             tile -= upperBound(midrId.toArray(new Integer[0]), tile);
+            
             if (event.equals("SetSpeed")) {
+                JSONObject ob = parsedChart.getJSONObject(tile);
                 if (o.get("speedType").equals("Multiplier")) {
-                    JSONObject ob = parsedChart.getJSONObject(tile);
                     bpm = o.getDouble("bpmMultiplier") * bpm;
-                    ob.put("bpm", bpm);
-                    parsedChart.put(tile, ob);
                 } else {
-                    JSONObject ob = parsedChart.getJSONObject(tile);
-                    bpm = o.getInt("beatsPerMinute");
-                    ob.put("bpm", o.getInt("beatsPerMinute"));
-                    parsedChart.put(tile, ob);
+                    bpm = o.getDouble("beatsPerMinute");
                 }
+                ob.put("bpm", bpm);
+                parsedChart.put(tile, ob);
             }
             if (event.equals("Twirl")) {
                 JSONObject ob = parsedChart.getJSONObject(tile);
@@ -168,12 +166,12 @@ public class Level {
         //noteTime.add(0.0);
         {
             double curAngle = 0;
-            double curBPM = l.getBPM();
-            double curTime = angleToTime((double) l.settings.getInt("countdownTicks") * 180 - 180, curBPM);//《-这里需要修改
+            double curBPM = (float)l.getBPM();
+            double curTime = 0;//《-这里需要修改
             for (int i = 0; i < parsedChart.length(); i++) {
                 JSONObject o = parsedChart.getJSONObject(i);
                 curAngle = fmod(curAngle - 180, 360);
-                curBPM = o.getDouble("bpm");
+                curBPM = o.getFloat("bpm");
                 double destAngle = o.getDouble("angle");
                 double pAngle = 0;
                 if (Math.abs(destAngle - curAngle) <= 0.001) {
@@ -198,8 +196,15 @@ public class Level {
             n[i] = noteTime.get(i);
             //     n[i] = offsetTime;
         }
-        System.out.println(Arrays.toString(n));
-        start(n);
+        FileWriter w = new FileWriter(new File("/sdcard/a.txt"));
+        File file = new File("/sdcard/b.json");
+        for(double t:noteTime){
+	    	w.write(t + "\n");
+            System.out.println(t);
+    	}
+	    w.close();
+        writeJSONToFile(parsedChart,file);
+      //  start(n);
         //return;
 
     }
@@ -459,11 +464,20 @@ public class Level {
     public void previewAndSave() throws JSONException, IOException {
         System.out.println(level.toString(2));
         File file = new File(currentLevelFile.replace(".adofai", "-mod.adofai"));
-        FileWriter writer = new FileWriter(file);
-        writer.write(level.toString(2));
-        writer.close();
+        writeJSONToFile(level,file);
     }
+    
+    public static void writeJSONToFile(JSONObject JSONString,File filePath) throws IOException,JSONException {
+		FileWriter writer = new FileWriter(filePath);
+        writer.write(JSONString.toString(2));
+        writer.close();
+	}
 
+    public static void writeJSONToFile(JSONArray JSONString,File filePath) throws IOException,JSONException {
+		FileWriter writer = new FileWriter(filePath);
+        writer.write(JSONString.toString(3));
+        writer.close();
+	}
 
     enum TileAngle {
 
