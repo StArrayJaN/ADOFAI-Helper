@@ -13,6 +13,8 @@ task run(type: JavaExec) {
     mainClass = 'thercn.adofai.helper.Level'
     classpath = sourceSets.main.runtimeClasspath
     systemProperty 'java.library.path', 'binary/'
+    systemProperty 'file.encoding', 'UTF-8'
+    systemProperty 'sun.jnu.encoding', 'UTF-8'
 }
 jar {
     manifest {
@@ -34,6 +36,8 @@ if (nativeProject != null) {
 
     tasks.findByPath(":assemble").dependsOn ':native:linkDebug'
 }
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
 test {
     useJUnitPlatform()

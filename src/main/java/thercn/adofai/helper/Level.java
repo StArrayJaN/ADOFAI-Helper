@@ -13,6 +13,8 @@ import java.util.stream.Collectors;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import java.security.Timestamp;
+import java.util.concurrent.TimeUnit;
 
 public class Level {
     JSONObject level;
@@ -26,7 +28,8 @@ public class Level {
             //System.loadLibrary("key");
             //
             //System.loadLibrary("项目1");
-            Level level = Level.readLevelFile("/storage/emulated/0/levels/Solypsis VIP [All]/level.adofai");
+            //Level level2 = Level.readLevelFile("D:\\Maps\\ThirdPart\\rtx20000\\backup.adofai");
+            Level level = Level.readLevelFile("/sdcard/Speed of link.adofai");
             System.out.println("当前文件为" + level.currentLevelFile);
             System.out.println("获取到" + level.getCharts().size() + "个轨道");
             System.out.println("BPM:" + level.getBPM());
@@ -38,7 +41,36 @@ public class Level {
         }
     }
 
-    static void convertToOld(Level level) throws JSONException,IOException{
+    static void removeEffects(Level l) throws JSONException,IOException {
+		String[] effectEvents = {
+			"MoveCamera",
+			"AnimateTrack",
+			"MoveTrack",
+			"AddDecoration",
+			"Flash",
+			"SetFilter",
+			"SetPlanetRotation",
+			"HallOfMirrors",
+			"ShakeScreen",
+			"MoveDecorations",
+			"RepeatEvents",
+			"Bloom",
+			"SetConditionalEvents",
+			"ScreenTile",
+			"ScreenScroll",
+			"CallMethod",
+			"AddComponent",
+			"Hide",
+			"ScaleRadius",
+			"Multitap",
+			"TileDimensions",
+			"KillPlayer"};
+        for (int i = 0; i < effectEvents.length; ++i) {
+        	l.removeAllEvent(effectEvents[i]);
+        }
+        l.previewAndSave();
+    }
+    static void convertToOld(Level level) throws JSONException,IOException {
 		String reomveSettings[] = { "speedTrialAim",
 			"trackTexture",
 			"trackTextureScale",
@@ -83,9 +115,42 @@ public class Level {
 		for (int i = 0; i < reomveSettings.length; i++) {
 			level.removeLevelSetting(reomveSettings[i]);
 		}
-		level.setLevelSetting("version",12);
+        for (int i = 0; i < level.events.length(); ++i) {
+        	JSONObject o = level.events.getJSONObject(i);
+        	for (String key : o.keySet()) {
+                try {
+                    if (o.getBoolean(key)) {
+                    	o.put(key, "Enabled");
+                    } else if (!o.getBoolean(key)) {
+                        o.put(key, "Disabled");
+                    }
+                } catch (Exception err) {
+                }
+            }
+            if (o.get("eventType").equals("ScalePlanets")) {
+            	o.remove("targetPlanet");
+            }
+        }
+
+        for (int i = 0; i < level.decorations.length(); ++i) {
+            JSONObject o = level.decorations.getJSONObject(i);
+            for (String key : o.keySet()) {
+                try {
+                    if (o.getBoolean(key)) {
+                    	o.put(key, "Enabled");
+                    } else if (!o.getBoolean(key)) {
+						o.put(key, "Disabled");
+                    }
+                } catch (Exception err) {}
+            }
+        } 
+        level.removeAllEvent("setFloorIcon");
+        level.removeAllEvent("AddObject");
+        level.removeAllEvent("MoveObject");
+		level.setLevelSetting("version", 12);
 		level.previewAndSave();
 	}
+
     static void runMacro(Level l) throws JSONException,IOException {
         JSONArray parsedChart = new JSONArray();
         int midrCount = 0;
@@ -111,23 +176,55 @@ public class Level {
                 temp.put("midr", "false");
                 parsedChart.put(i - midrCount, temp);
             }
-        }
-        double bpm = (float)l.getBPM();
 
+        }
+        double angle = fmod(angleDataList.get(angleDataList.size() - 1), 360);
+		JSONObject temp = new JSONObject();
+		temp.put("angle", angle);
+		temp.put("bpm", "unSet");
+		temp.put("direction", 0);
+		temp.put("extraHold", 0);
+		temp.put("midr", "false");
+		parsedChart.put(parsedChart.length(), temp);
+
+        double bpm = l.getBPM();
+        float pitch = l.getPitch() / 100;
+        boolean threePlanet = false;
         for (int i = 0; i < l.events.length(); i++) {
             JSONObject o = l.events.getJSONObject(i);
             int tile = o.getInt("floor");
             String event = o.get("eventType").toString();
             tile -= upperBound(midrId.toArray(new Integer[0]), tile);
-            
+
             if (event.equals("SetSpeed")) {
-                JSONObject ob = parsedChart.getJSONObject(tile);
+                JSONObject ob = null;
+                try {
+                	ob = parsedChart.getJSONObject(tile);
+                } catch (Exception e) {
+                    System.out.println(o.getInt("floor"));
+                    System.out.println(parsedChart.length());
+                	e.printStackTrace();
+                    ob = parsedChart.getJSONObject(parsedChart.length());
+
+                }
                 if (o.get("speedType").equals("Multiplier")) {
-                    bpm = o.getDouble("bpmMultiplier") * bpm;
+                    bpm = o.getDouble("bpmMultiplier") * bpm * pitch;
                 } else {
-                    bpm = o.getDouble("beatsPerMinute");
+                    bpm = o.getDouble("beatsPerMinute") * pitch;
                 }
                 ob.put("bpm", bpm);
+                parsedChart.put(tile, ob);
+            }
+            if (event.equals("MultiPlanet")) {
+                if (o.get("planets").equals("ThreePlanets")) {
+                    threePlanet = true;
+                } else {
+                    threePlanet = false;
+                }
+            }
+            if (threePlanet) {
+                JSONObject ob = parsedChart.getJSONObject(tile);
+                ob.put("bpm", ob.getDouble("bpm") * 1.5);
                 parsedChart.put(tile, ob);
             }
             if (event.equals("Twirl")) {
@@ -162,16 +259,16 @@ public class Level {
             }
         }
 
-        List<Double> noteTime = new ArrayList<>();
-        //noteTime.add(0.0);
+        List<Double> noteTime = new ArrayList<>(),
+			noteOffset = new ArrayList<>();
         {
             double curAngle = 0;
-            double curBPM = (float)l.getBPM();
-            double curTime = 0;//《-这里需要修改
+            double curBPM = l.getBPM();
+            double curTime = 0;
             for (int i = 0; i < parsedChart.length(); i++) {
                 JSONObject o = parsedChart.getJSONObject(i);
                 curAngle = fmod(curAngle - 180, 360);
-                curBPM = o.getFloat("bpm");
+                curBPM = o.getDouble("bpm");
                 double destAngle = o.getDouble("angle");
                 double pAngle = 0;
                 if (Math.abs(destAngle - curAngle) <= 0.001) {
@@ -185,28 +282,33 @@ public class Level {
                 if (o.getBoolean("midr")) {
                     curAngle = curAngle + 180;
                 }
+                noteOffset.add(angleToTime(pAngle, curBPM));
                 noteTime.add(curTime);
             }
 
         }
         System.out.println("处理完成,按W开始");
-        // double offsetTime = 0;
         double[] n = new double[noteTime.size()];
         for (int i = 0; i < noteTime.size(); i++) {
             n[i] = noteTime.get(i);
-            //     n[i] = offsetTime;
+            //System.out.println("当前方块数量:" + i + ",当前方块BPM:" + 60 * 1000 / noteOffset.get(i) + "BPM");
         }
-        FileWriter w = new FileWriter(new File("/sdcard/a.txt"));
-        File file = new File("/sdcard/b.json");
-        for(double t:noteTime){
-	    	w.write(t + "\n");
-            System.out.println(t);
-    	}
-	    w.close();
-        writeJSONToFile(parsedChart,file);
-      //  start(n);
-        //return;
-
+		final List<Double> a = noteOffset;
+		Thread t = new Thread(new Runnable(){
+				@Override
+				public void run() {
+					for (int i = 0; i < a.size(); i++) {
+						System.out.println("当前方块数量:" + i + ",当前方块BPM:" + 60 * 1000 / a.get(i) + "BPM");
+						Double b = a.get(i) * 1000;
+						try {
+							TimeUnit.MICROSECONDS.sleep(b.longValue());
+						} catch (InterruptedException e) {}
+					}
+				}
+			});
+        t.start();
+		System.out.println("我槽你吗");
+        //start(n);
     }
 
 
@@ -285,7 +387,6 @@ public class Level {
             for (int i = 0; i < events.length(); i++) {
                 eventObject = (JSONObject) events.get(i);
                 if (eventObject.getInt("floor") == chart && eventObject.get("eventType").equals(event)) {
-                    //System.out.println(eventObject);
                     return eventObject;
                 }
             }
@@ -300,13 +401,11 @@ public class Level {
 
         if (charts == null) {
             String pathData = level.getString("pathData");
-
             List<TileAngle> parsedPathData = pathData
-                    .chars()
-                    .mapToObj(c -> (char) c)
-                    .map(TileAngle.angleCharMap::get)
-                    .collect(Collectors.toList());
-
+				.chars()
+				.mapToObj(c -> (char) c)
+			.map(TileAngle.angleCharMap::get)
+			.collect(Collectors.toList());
             double staticAngle = 0d;
 
             for (TileAngle angle : parsedPathData) {
@@ -339,7 +438,7 @@ public class Level {
         return settings.getInt("offset");
     }
 
-    public int getPitch() throws JSONException {
+    public float getPitch() throws JSONException {
         return settings.getInt("pitch");
     }
 
@@ -347,7 +446,7 @@ public class Level {
         return settings.getInt("countdownTicks");
     }
 
-    public String getSetting(String setting) throws JSONException {
+    public Object getSetting(String setting) throws JSONException {
         return settings.get(setting).toString();
     }
 
@@ -360,15 +459,14 @@ public class Level {
     }
 
 	public boolean hasSetting(String key) {
-		try
-		{
+		try {
 			settings.get(key);
 			return true;
 		} catch (JSONException e) {
 			return false;
 		}
 	}
-	
+
     public Double[] bpmMultiplierToBPM(List<String[]> bpmList) throws JSONException {
         double bpm = getBPM();
         Double newbpmList[] = new Double[bpmList.size()];
@@ -417,7 +515,7 @@ public class Level {
         List<JSONObject> chartEvents = new ArrayList<>();
         for (int a = 0; a < events.length(); a++) {
             eventObject = (JSONObject) events.get(a);
-            if ((int) eventObject.get("floor") == chart) {
+            if (eventObject.getInt("floor") == chart) {
                 chartEvents.add(eventObject);
             }
         }
@@ -446,10 +544,6 @@ public class Level {
         return false;
     }
 
-    public JSONArray getEventArray() {
-        return events;
-    }
-
     public void removeAllEvent(String event) throws JSONException {
         JSONObject eventObject;
         for (int i = 0; i < events.length(); i++) {
@@ -462,18 +556,18 @@ public class Level {
     }
 
     public void previewAndSave() throws JSONException, IOException {
-        System.out.println(level.toString(2));
+        //System.out.println(level.toString(2));
         File file = new File(currentLevelFile.replace(".adofai", "-mod.adofai"));
-        writeJSONToFile(level,file);
+        writeJSONToFile(level, file);
     }
-    
-    public static void writeJSONToFile(JSONObject JSONString,File filePath) throws IOException,JSONException {
+
+    public static void writeJSONToFile(JSONObject JSONString, File filePath) throws IOException,JSONException {
 		FileWriter writer = new FileWriter(filePath);
         writer.write(JSONString.toString(2));
         writer.close();
 	}
 
-    public static void writeJSONToFile(JSONArray JSONString,File filePath) throws IOException,JSONException {
+    public static void writeJSONToFile(JSONArray JSONString, File filePath) throws IOException,JSONException {
 		FileWriter writer = new FileWriter(filePath);
         writer.write(JSONString.toString(3));
         writer.close();
