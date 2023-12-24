@@ -10,15 +10,15 @@ repositories {
 }
 
 task run(type: JavaExec) {
-    mainClass = 'thercn.adofai.helper.Level'
+    mainClass = 'thercn.adofai.helper.Main'
     classpath = sourceSets.main.runtimeClasspath
-    systemProperty 'java.library.path', 'binary/'
+    systemProperty 'java.library.path', 'native/build/lib/main/debug'
     systemProperty 'file.encoding', 'UTF-8'
     systemProperty 'sun.jnu.encoding', 'UTF-8'
 }
 jar {
     manifest {
-        attributes 'Main-Class': 'thercn.adofai.helper.Level'
+        attributes 'Main-Class': 'thercn.adofai.helper.Main'
     }
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }

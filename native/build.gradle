@@ -25,7 +25,7 @@ library {
             compileTask.includes.from("${Jvm.current().javaHome}/include/win32")
         }
 
-        compileTask.source.from fileTree(dir: "src/main/cpp", includes: ["**/*.cpp"])
+        compileTask.source.from fileTree(dir: "src/main/cpp", includes: ["**/*.cc"])
 
         def toolChain = binary.toolChain
         // Define toolchain-specific compiler options
