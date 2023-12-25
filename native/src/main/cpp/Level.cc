@@ -22,7 +22,7 @@
 
 #define KEY_DOWN(key) ((GetAsyncKeyState(key)&0x8000)?1:0)
 extern "C"
-JNIEXPORT void JNICALL Java_thercn_adofai_helper_Level_start(JNIEnv *env, jclass clazz, jdoubleArray valuesObj) {
+JNIEXPORT void JNICALL Java_thercn_adofai_helper_Main_start(JNIEnv *env, jclass clazz, jdoubleArray valuesObj) {
     jsize numValues = env->GetArrayLength(valuesObj);
     jdouble* noteTime = env->GetDoubleArrayElements(valuesObj, nullptr);
     std::vector<std::tuple<double,int,bool>>keyEvents;

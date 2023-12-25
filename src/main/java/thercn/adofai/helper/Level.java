@@ -2,19 +2,19 @@ package thercn.adofai.helper;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.IntFunction;
 import java.util.stream.Collectors;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import java.security.Timestamp;
-import java.util.concurrent.TimeUnit;
 
 public class Level {
     JSONObject level;
@@ -99,16 +99,23 @@ public class Level {
 
     public List<Double> getCharts() throws JSONException {
         //预处理，有需要则在main方法进行更多处理
-        JSONArray charts = level.optJSONArray("angleData");
+		JSONArray charts = null;
+		String pathData = "RRRRRRRRRR";
+		try {
+			charts = level.getJSONArray("angleData");
+		} catch(JSONException e)
+		{
+			pathData = level.getString("pathData");
+		}
+        
         List<Double> chartArray = new ArrayList<>();
-
+		
         if (charts == null) {
-            String pathData = level.getString("pathData");
-            List<TileAngle> parsedPathData = pathData
-				.chars()
-				.mapToObj(c -> (char) c)
-			.map(TileAngle.angleCharMap::get)
-			.collect(Collectors.toList());
+            List<TileAngle> parsedPathData = new ArrayList<>();
+			for (int i = 0; i < pathData.length(); i++) {
+				char c = pathData.charAt(i);
+				parsedPathData.add(TileAngle.angleCharMap.get(c));
+			}
             double staticAngle = 0d;
 
             for (TileAngle angle : parsedPathData) {
@@ -150,7 +157,7 @@ public class Level {
     }
 
     public Object getSetting(String setting) throws JSONException {
-        return settings.get(setting).toString();
+        return settings.get(setting);
     }
 
     public void setLevelSetting(String key, Object value) throws JSONException {

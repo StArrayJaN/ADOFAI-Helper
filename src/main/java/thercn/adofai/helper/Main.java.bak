@@ -20,16 +20,12 @@ import org.json.JSONTokener;
 
 public class Main {
 
-    static String platform = System.getProperty("os.name").toLowerCase();
     public native static void start(double[] keyTimeList);
     
     public static void main(String[] args) {
-        String file = "/storage/emulated/0/level.adofai";
-        file = null;
+        String file = "/storage/emulated/0/level(1).adofai";
         try {
-            if(platform.equals("windows")) {
-            	System.loadLibrary("native");
-            }
+            System.loadLibrary("native");
             Level level = Level.readLevelFile(file);
             System.out.println("当前文件为" + level.currentLevelFile);
             System.out.println("获取到" + level.getCharts().size() + "个轨道");
@@ -38,7 +34,8 @@ public class Main {
             System.out.println("获取到" + level.getEvents() + "个事件");
             removeEffects(level);
             level.save(null);
-        } catch (IOException | JSONException | UnsatisfiedLinkError e) {
+            System.out.println("删除完成");
+        } catch (IOException | JSONException e) {
             e.printStackTrace();
         }
     }
@@ -307,7 +304,6 @@ public class Main {
             }
 
         }
-        
         System.out.println("处理完成,按W开始");
         double[] n = new double[noteTime.size()];
         for (int i = 0; i < noteTime.size(); i++) {
@@ -327,9 +323,7 @@ public class Main {
 				}
 			});
         //t.start();
-        if(platform.equals("windows")) {
-        	start(n);
-        }
+        //start(n);
     }
     public static int upperBound(Integer[] arr, int value) {
         int left = 0;
