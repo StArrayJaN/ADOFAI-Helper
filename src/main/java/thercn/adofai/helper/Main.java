@@ -1,33 +1,31 @@
 package thercn.adofai.helper;
 
 import java.io.BufferedReader;
+import java.io.Console;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.Console;
 import java.nio.file.Files;
-import java.util.*;
-import java.util.stream.Collectors;
-
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import java.security.Timestamp;
-import java.util.concurrent.TimeUnit;
-import org.json.JSONTokener;
 
 public class Main {
 
     static String platform = System.getProperty("os.name").toLowerCase();
     public native static void start(double[] keyTimeList);
-    
+    public native static boolean getKeyEvent();
+
     public static void main(String[] args) {
-        String file = "/storage/emulated/0/level.adofai";
-        file = null;
+        String file = "/storage/emulated/0/test.adofai";
+        //file = null;
         try {
-            if(platform.equals("windows")) {
+            if (platform.equals("windows")) {
             	System.loadLibrary("native");
             }
             Level level = Level.readLevelFile(file);
@@ -36,33 +34,36 @@ public class Main {
             System.out.println("BPM:" + level.getBPM());
             System.out.println("偏移:" + level.getOffset());
             System.out.println("获取到" + level.getEvents() + "个事件");
-            removeEffects(level);
-            level.save(null);
+            runMacro(level);
         } catch (IOException | JSONException | UnsatisfiedLinkError e) {
             e.printStackTrace();
         }
     }
 
-    public static String catFile(String filePath){
+    static void runMacroNew(Level l) throws JSONException {
+        //如果需要重写，请将代码放入这里
+    }
+
+    public static String catFile(String filePath) {
     	File file = new File(filePath);
         BufferedReader reader = null;
         try {
         	reader = new BufferedReader(new InputStreamReader(Files.newInputStream(file.toPath()), "UTF-8"));
             StringBuilder content = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            content.append(line);
-        }
-        reader.close();
-        int i = content.toString().indexOf("{");
-        String newJSONStr = content.toString().substring(i);
-        return newJSONStr;
-        } catch(Exception err) {
+			String line;
+			while ((line = reader.readLine()) != null) {
+				content.append(line);
+			}
+			reader.close();
+			int i = content.toString().indexOf("{");
+			String newJSONStr = content.toString().substring(i);
+			return newJSONStr;
+        } catch (Exception err) {
         	err.printStackTrace();
         }
         return null;
-        
-        
+
+
     }
     public static String scannerInput() {
         Console console = System.console();
@@ -89,12 +90,12 @@ public class Main {
 			"RepeatEvents",
 			"Bloom",
 			"ScreenScroll"
-            };
+		};
         for (int i = 0; i < effectEvents.length; ++i) {
-        	l.removeAllEvent(effectEvents[i],true);
-            l.removeAllEvent(effectEvents[i],false);
+        	l.removeAllEvent(effectEvents[i], true);
+            l.removeAllEvent(effectEvents[i], false);
         }
-        
+
     }
     static void convertToOld(Level level) throws JSONException {
 		String reomveSettings[] = { "speedTrialAim",
@@ -170,9 +171,9 @@ public class Main {
                 } catch (Exception err) {}
             }
         } 
-        level.removeAllEvent("setFloorIcon",false);
-        level.removeAllEvent("AddObject",false);
-        level.removeAllEvent("MoveObject",false);
+        level.removeAllEvent("setFloorIcon", false);
+        level.removeAllEvent("AddObject", false);
+        level.removeAllEvent("MoveObject", false);
 		level.setLevelSetting("version", 12);
 	}
 
@@ -185,11 +186,18 @@ public class Main {
         //初步处理，获取轨道角度和中旋
         for (int i = 0; i < angleDataList.size(); i++) {
             double angleData = angleDataList.get(i);
-            if (Math.abs(angleData - 999) <= 0.01) {
-                //中旋
+            if (angleData == 999) {
+                //中旋，删除掉多余的一个物量
                 midrCount++;
                 JSONObject temp = parsedChart.getJSONObject(i - midrCount);
                 temp.put("midr", "true");
+                JSONArray array = new JSONArray();
+                if (l.hasEvent(i, "SetSpeed")) {
+                    array.put("Speed");
+                } else if (l.hasEvent(i, "Twirl")) {
+                	array.put("Twirl");
+                }
+                temp.put("midSpinHasEvent", array);
                 parsedChart.put(i - midrCount, temp);
                 midrId.add(i - 1);
             } else {
@@ -214,15 +222,15 @@ public class Main {
 		temp.put("extraHold", 0);
 		temp.put("midr", "false");
 		parsedChart.put(parsedChart.length(), temp);
-        
+
         double bpm = l.getBPM();
         float pitch = l.getPitch() / 100;
-        //根据轨道数量创建并添加json节点
+        //根据轨道事件修改json节点
         for (int i = 0; i < l.events.length(); i++) {
             JSONObject o = l.events.getJSONObject(i);
             int tile = o.getInt("floor");
             String event = o.get("eventType").toString();
-            //upperBound疑似用于去除中旋轨道多出的一个物量
+            //upperBound用于获取轨道数量和事件数量的差异;
             tile -= upperBound(midrId.toArray(new Integer[0]), tile);
             //根据速度事件设置变速
             if (event.equals("SetSpeed")) {
@@ -258,7 +266,7 @@ public class Main {
         double BPM = l.getBPM();
         int direction = 1;
         for (int i = 0; i < parsedChart.length(); i++) {
-           //旋转处理
+			//旋转处理
             if (parsedChart.getJSONObject(i).getInt("direction") == -1) {
                 direction = -direction;
             }
@@ -270,10 +278,9 @@ public class Main {
             } else {
                 BPM = ob.getDouble("bpm");
             }
-            
-            
-        }
 
+
+        }
         List<Double> noteTime = new ArrayList<>(),
 			noteOffset = new ArrayList<>();
         {
@@ -307,7 +314,7 @@ public class Main {
             }
 
         }
-        
+
         System.out.println("处理完成,按W开始");
         double[] n = new double[noteTime.size()];
         for (int i = 0; i < noteTime.size(); i++) {
@@ -317,8 +324,8 @@ public class Main {
 		Thread t = new Thread(new Runnable(){
 				@Override
 				public void run() {
-					for (int i = 0; i < a.size(); i++) {
-						System.out.println("当前方块数量:" + i + ",当前方块BPM:" + 60 * 1000 / a.get(i) + "BPM");
+					for (int i = 0; i < a.size() - 1; i++) {
+						System.out.println("当前方块数量:" + (i + 1) + ",当前方块BPM:" + 60 * 1000 / a.get(i) + "BPM");
 						Double b = a.get(i) * 1000;
 						try {
 							TimeUnit.MICROSECONDS.sleep(b.longValue());
@@ -326,11 +333,12 @@ public class Main {
 					}
 				}
 			});
-        //t.start();
-        if(platform.equals("windows")) {
+        t.start();
+        if (platform.equals("windows")) {
         	start(n);
         }
     }
+ 
     public static int upperBound(Integer[] arr, int value) {
         int left = 0;
         int right = arr.length - 1;
@@ -344,7 +352,7 @@ public class Main {
         }
         return left;
     }
-    
+
     //伪模运算
     public static double fmod(double a, double b) {
         double t = Math.floor(a / b);

@@ -1,12 +1,16 @@
 
 #include <jni.h>
-#include <windows.h>
 #include <iostream>
 #include <vector>
 #include <stdio.h>
 #include <thread>
 #include <algorithm>
+
+#ifdef _WIN32
+#include <windows.h>
 #include <WinUser.h>
+#define KEY_DOWN(key) ((GetAsyncKeyState(key)&0x8000)?1:0)
+#endif
 
 #ifdef _MSC_VER
 #pragma comment(lib,"User32.lib")
@@ -20,33 +24,43 @@
  * Signature: (I)V
  */
 
-#define KEY_DOWN(key) ((GetAsyncKeyState(key)&0x8000)?1:0)
 extern "C"
 JNIEXPORT void JNICALL Java_thercn_adofai_helper_Main_start(JNIEnv *env, jclass clazz, jdoubleArray valuesObj) {
     jsize numValues = env->GetArrayLength(valuesObj);
     jdouble* noteTime = env->GetDoubleArrayElements(valuesObj, nullptr);
     std::vector<std::tuple<double,int,bool>>keyEvents;
-    const char usedKeys[]="ABCDEFGHIJKLMN";
+    const char usedKeys[]="SB7BG";
     const int totKeyCount=strlen(usedKeys);
         for(unsigned i=0;i<numValues;i++){
                 keyEvents.push_back(std::tuple<double,int,bool>{noteTime[i],usedKeys[i%totKeyCount],true});
                 keyEvents.push_back(std::tuple<double,int,bool>{noteTime[i]+0.1,usedKeys[i%totKeyCount],false});
         }
         std::sort(keyEvents.begin(),keyEvents.end());
-
+        #ifdef _WIN32
         while(!KEY_DOWN(VK_SPACE)){;}
         while(!KEY_DOWN('W')){;}
+        #endif
         auto startTime=std::chrono::steady_clock().now();
         unsigned eventNumber=1;
         while(eventNumber<keyEvents.size()){
                 auto curTime=std::chrono::steady_clock().now();
                 auto timeMilliseconds=std::chrono::duration<double>(curTime-startTime).count()*1000+std::get<0>(keyEvents[0]);
                 while(eventNumber<keyEvents.size()&&std::get<0>(keyEvents[eventNumber])<=timeMilliseconds){
+                        #ifdef _WIN32
                         keybd_event(std::get<1>(keyEvents[eventNumber]),0,
                                 std::get<2>(keyEvents[eventNumber])?0:KEYEVENTF_KEYUP
                         ,0);
+                        #endif
+                        //std::cout<<"arg1:"<<std::get<1>(keyEvents[eventNumber])<<"arg2"<<std::get<2>(keyEvents[eventNumber])<<std::endl;
                         eventNumber++;
                 }
         }
     env->ReleaseDoubleArrayElements(valuesObj, noteTime, 0);
+}
+JNIEXPORT jboolean JNICALL Java_thercn_adofai_helper_Main_getKeyEvent
+  (JNIEnv *, jclass) {
+      #ifdef _WIM32
+      while(!KEY_DOWN('W')){;}
+      #endif
+      return JNI_TRUE;
 }

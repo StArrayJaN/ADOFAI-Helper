@@ -13,6 +13,7 @@ task run(type: JavaExec) {
     mainClass = 'thercn.adofai.helper.Main'
     classpath = sourceSets.main.runtimeClasspath
     systemProperty 'java.library.path', 'native/build/lib/main/debug'
+    //systemProperty 'java.library.path', 'binary'
     systemProperty 'file.encoding', 'UTF-8'
     systemProperty 'sun.jnu.encoding', 'UTF-8'
 }
@@ -32,7 +33,7 @@ dependencies {
 def nativeProject = findProject(":native")
 
 if (nativeProject != null) {
-    run.dependsOn ':native:linkDebug'
+    run.dependsOn ':native:build'
 
     tasks.findByPath(":assemble").dependsOn ':native:linkDebug'
 }

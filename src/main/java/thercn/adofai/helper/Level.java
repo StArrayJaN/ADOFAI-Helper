@@ -263,7 +263,7 @@ public class Level {
                 decorations.remove(i);
                 i--;
             }
-        }
+            }
         } else {
         	for (int i = 0; i < events.length(); i++) {
             eventObject = (JSONObject) events.get(i);
