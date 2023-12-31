@@ -4,9 +4,8 @@
 /.androidide
 ### IntelliJ IDEA ###
 /.idea
-*.iml
-*.ipr
-out/
+/*.iml
+/*.ipr
 !**/src/main/**/out/
 !**/src/test/**/out/
 

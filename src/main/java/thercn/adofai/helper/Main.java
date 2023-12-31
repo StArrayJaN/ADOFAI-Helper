@@ -6,8 +6,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +23,7 @@ public class Main {
         String file = "/storage/emulated/0/test.adofai";
         //file = null;
         try {
-            if (platform.equals("windows")) {
+            if (platform.contains("windows")) {
             	System.loadLibrary("native");
             }
             Level level = Level.readLevelFile(file);
@@ -34,12 +32,189 @@ public class Main {
             System.out.println("BPM:" + level.getBPM());
             System.out.println("偏移:" + level.getOffset());
             System.out.println("获取到" + level.getEvents() + "个事件");
+			System.out.println(level);
             runMacro(level);
-        } catch (IOException | JSONException | UnsatisfiedLinkError e) {
+        } catch (IOException | JSONException e) {
             e.printStackTrace();
         }
     }
 
+    static void runMacro(Level l) throws JSONException {
+		
+
+        List<Double> angleDataList = l.getCharts();
+		
+		JSONArray levelEvents = l.events;
+		//对带有变速和旋转的中旋进行处理
+		for (int i = 0; i < angleDataList.size(); i++) {
+			
+			if (angleDataList.get(i) == 999){
+				
+				if (l.hasEvent(i,"SetSpeed"))
+				{
+					JSONObject a = levelEvents.getJSONObject(l.getEventIndex(i,"SetSpeed"));
+					a.put("floor",a.getInt("floor") + 1);
+				} 
+				else if (l.hasEvent(i,"Twirl")){
+					JSONObject a = levelEvents.getJSONObject(l.getEventIndex(i,"Twirl"));
+					a.put("floor",a.getInt("floor") + 1);
+				}
+			}
+		}
+		
+        JSONArray parsedChart = new JSONArray();
+        int midrCount = 0;
+        List<Integer> midrId = new ArrayList<>();
+        //初步处理，获取轨道角度和中旋
+        for (int i = 0; i < angleDataList.size(); i++) {
+            double angleData = angleDataList.get(i);
+            if (angleData == 999) {
+                //中旋，删除掉多余的一个物量
+                midrCount++;
+                JSONObject temp = parsedChart.getJSONObject(i - midrCount);
+                temp.put("midr", "true");
+                parsedChart.put(i - midrCount, temp);
+                midrId.add(i - 1);
+            } else {
+                //一般轨道
+                double angle = fmod(angleData, 360);
+                JSONObject temp = new JSONObject();
+                temp.put("angle", angle);
+                temp.put("bpm", "unSet");
+                temp.put("direction", 0);
+                temp.put("extraHold", 0);
+                temp.put("midr", "false");
+                parsedChart.put(i - midrCount, temp);
+            }
+
+        }
+        double angle = fmod(angleDataList.get(angleDataList.size() - 1), 360);
+        //创建一个json节点
+		JSONObject temp = new JSONObject();
+		temp.put("angle", angle);
+		temp.put("bpm", "unSet");
+		temp.put("direction", 0);
+		temp.put("extraHold", 0);
+		temp.put("midr", "false");
+		parsedChart.put(parsedChart.length(), temp);
+
+        double bpm = l.getBPM();
+        float pitch = l.getPitch() / 100;
+        //根据轨道事件修改json节点
+        for (int i = 0; i < levelEvents.length(); i++) {
+            JSONObject o = levelEvents.getJSONObject(i);
+            int tile = o.getInt("floor");
+            String event = o.get("eventType").toString();
+            //upperBound用于获取轨道数量和事件数量的差异;
+            tile -= upperBound(midrId.toArray(new Integer[0]), tile);
+            //根据速度事件设置变速
+            if (event.equals("SetSpeed")) {
+                JSONObject ob = parsedChart.getJSONObject(tile);
+                if (o.get("speedType").equals("Multiplier")) {
+                    bpm = o.getDouble("bpmMultiplier") * bpm * pitch;
+                } else {
+                    bpm = o.getDouble("beatsPerMinute") * pitch;
+                }
+                ob.put("bpm", bpm);
+                parsedChart.put(tile, ob);
+            }
+            //旋转
+            if (event.equals("Twirl")) {
+                JSONObject ob = parsedChart.getJSONObject(tile);
+                ob.put("direction", -1);
+                parsedChart.put(tile, ob);
+            }
+            //暂停
+            if (event.equals("Pause")) {
+                JSONObject ob = parsedChart.getJSONObject(tile);
+                ob.put("extraHold", o.getDouble("duration") / 2);
+                parsedChart.put(tile, ob);
+            }
+            //长按
+            if (event.equals("Hold")) {
+                JSONObject ob = parsedChart.getJSONObject(tile);
+                ob.put("extraHold", o.getDouble("duration"));
+                parsedChart.put(tile, ob);
+            }
+        }
+
+        double BPM = l.getBPM();
+        int direction = 1;
+        for (int i = 0; i < parsedChart.length(); i++) {
+			//旋转处理
+            if (parsedChart.getJSONObject(i).getInt("direction") == -1) {
+                direction = -direction;
+            }
+            JSONObject ob = parsedChart.getJSONObject(i);
+            ob.put("direction", direction);
+            //将bpm应用到所有轨道
+            if (parsedChart.getJSONObject(i).get("bpm").equals("unSet")) {
+                ob.put("bpm", BPM);
+            } else {
+                BPM = ob.getDouble("bpm");
+            }
+
+
+        }
+        List<Double> noteTime = new ArrayList<>(),
+			noteOffset = new ArrayList<>();
+        {
+            double curAngle = 0;
+            double curBPM = l.getBPM();
+            double curTime = 0; //核心:按键时间
+            for (int i = 0; i < parsedChart.length(); i++) {
+                JSONObject o = parsedChart.getJSONObject(i);
+                //设置角度
+                curAngle = fmod(curAngle - 180, 360);
+                curBPM = o.getDouble("bpm");
+                double destAngle = o.getDouble("angle");
+                double pAngle = 0; 
+                if (Math.abs(destAngle - curAngle) <= 0.001) {
+                    //(疑似)取整
+                    pAngle = 360;
+                } else {
+                    pAngle = fmod((curAngle - destAngle) * o.getInt("direction"), 360);
+                }
+                pAngle += o.getDouble("extraHold") * 360;
+                //按键时间增加
+                curTime += angleToTime(pAngle, curBPM);
+                curAngle = destAngle;
+                //中旋处理
+                if (o.getBoolean("midr")) {
+                    curAngle = curAngle + 180;
+                }
+                noteOffset.add(angleToTime(pAngle, curBPM));
+                //添加到数组
+                noteTime.add(curTime);
+            }
+
+        }
+
+        System.out.println("处理完成,按W开始");
+        double[] n = new double[noteTime.size()];
+        for (int i = 0; i < noteTime.size(); i++) {
+            n[i] = noteTime.get(i);
+        }
+		final List<Double> a = noteOffset;
+		Thread t = new Thread(new Runnable(){
+				@Override
+				public void run() {
+					for (int i = 0; i < a.size() - 1; i++) {
+						System.out.println("当前方块数量:" + (i + 1) + ",当前方块BPM:" + 60 * 1000 / a.get(i) + "BPM");
+						Double b = a.get(i) * 1000;
+						try {
+							TimeUnit.MICROSECONDS.sleep(b.longValue());
+						} catch (InterruptedException e) {}
+					}
+				}
+			});
+        t.start();
+        if (platform.contains("windows")) {
+        	start(n);
+        }
+    }
+ 
+    
     static void runMacroNew(Level l) throws JSONException {
         //如果需要重写，请将代码放入这里
     }
@@ -177,168 +352,6 @@ public class Main {
 		level.setLevelSetting("version", 12);
 	}
 
-    static void runMacro(Level l) throws JSONException {
-        JSONArray parsedChart = new JSONArray();
-        int midrCount = 0;
-        List<Integer> midrId = new ArrayList<>();
-
-        List<Double> angleDataList = l.getCharts();
-        //初步处理，获取轨道角度和中旋
-        for (int i = 0; i < angleDataList.size(); i++) {
-            double angleData = angleDataList.get(i);
-            if (angleData == 999) {
-                //中旋，删除掉多余的一个物量
-                midrCount++;
-                JSONObject temp = parsedChart.getJSONObject(i - midrCount);
-                temp.put("midr", "true");
-                JSONArray array = new JSONArray();
-                if (l.hasEvent(i, "SetSpeed")) {
-                    array.put("Speed");
-                } else if (l.hasEvent(i, "Twirl")) {
-                	array.put("Twirl");
-                }
-                temp.put("midSpinHasEvent", array);
-                parsedChart.put(i - midrCount, temp);
-                midrId.add(i - 1);
-            } else {
-                //一般轨道
-                double angle = fmod(angleData, 360);
-                JSONObject temp = new JSONObject();
-                temp.put("angle", angle);
-                temp.put("bpm", "unSet");
-                temp.put("direction", 0);
-                temp.put("extraHold", 0);
-                temp.put("midr", "false");
-                parsedChart.put(i - midrCount, temp);
-            }
-
-        }
-        double angle = fmod(angleDataList.get(angleDataList.size() - 1), 360);
-        //创建一个json节点
-		JSONObject temp = new JSONObject();
-		temp.put("angle", angle);
-		temp.put("bpm", "unSet");
-		temp.put("direction", 0);
-		temp.put("extraHold", 0);
-		temp.put("midr", "false");
-		parsedChart.put(parsedChart.length(), temp);
-
-        double bpm = l.getBPM();
-        float pitch = l.getPitch() / 100;
-        //根据轨道事件修改json节点
-        for (int i = 0; i < l.events.length(); i++) {
-            JSONObject o = l.events.getJSONObject(i);
-            int tile = o.getInt("floor");
-            String event = o.get("eventType").toString();
-            //upperBound用于获取轨道数量和事件数量的差异;
-            tile -= upperBound(midrId.toArray(new Integer[0]), tile);
-            //根据速度事件设置变速
-            if (event.equals("SetSpeed")) {
-                JSONObject ob = parsedChart.getJSONObject(tile);
-                if (o.get("speedType").equals("Multiplier")) {
-                    bpm = o.getDouble("bpmMultiplier") * bpm * pitch;
-                } else {
-                    bpm = o.getDouble("beatsPerMinute") * pitch;
-                }
-                ob.put("bpm", bpm);
-                parsedChart.put(tile, ob);
-            }
-            //旋转
-            if (event.equals("Twirl")) {
-                JSONObject ob = parsedChart.getJSONObject(tile);
-                ob.put("direction", -1);
-                parsedChart.put(tile, ob);
-            }
-            //暂停
-            if (event.equals("Pause")) {
-                JSONObject ob = parsedChart.getJSONObject(tile);
-                ob.put("extraHold", o.getDouble("duration") / 2);
-                parsedChart.put(tile, ob);
-            }
-            //长按
-            if (event.equals("Hold")) {
-                JSONObject ob = parsedChart.getJSONObject(tile);
-                ob.put("extraHold", o.getDouble("duration"));
-                parsedChart.put(tile, ob);
-            }
-        }
-
-        double BPM = l.getBPM();
-        int direction = 1;
-        for (int i = 0; i < parsedChart.length(); i++) {
-			//旋转处理
-            if (parsedChart.getJSONObject(i).getInt("direction") == -1) {
-                direction = -direction;
-            }
-            JSONObject ob = parsedChart.getJSONObject(i);
-            ob.put("direction", direction);
-            //将bpm应用到所有轨道
-            if (parsedChart.getJSONObject(i).get("bpm").equals("unSet")) {
-                ob.put("bpm", BPM);
-            } else {
-                BPM = ob.getDouble("bpm");
-            }
-
-
-        }
-        List<Double> noteTime = new ArrayList<>(),
-			noteOffset = new ArrayList<>();
-        {
-            double curAngle = 0;
-            double curBPM = l.getBPM();
-            double curTime = 0; //核心:按键时间
-            for (int i = 0; i < parsedChart.length(); i++) {
-                JSONObject o = parsedChart.getJSONObject(i);
-                //设置角度
-                curAngle = fmod(curAngle - 180, 360);
-                curBPM = o.getDouble("bpm");
-                double destAngle = o.getDouble("angle");
-                double pAngle = 0; 
-                if (Math.abs(destAngle - curAngle) <= 0.001) {
-                    //(疑似)取整
-                    pAngle = 360;
-                } else {
-                    pAngle = fmod((curAngle - destAngle) * o.getInt("direction"), 360);
-                }
-                pAngle += o.getDouble("extraHold") * 360;
-                //按键时间增加
-                curTime += angleToTime(pAngle, curBPM);
-                curAngle = destAngle;
-                //中旋处理
-                if (o.getBoolean("midr")) {
-                    curAngle = curAngle + 180;
-                }
-                noteOffset.add(angleToTime(pAngle, curBPM));
-                //添加到数组
-                noteTime.add(curTime);
-            }
-
-        }
-
-        System.out.println("处理完成,按W开始");
-        double[] n = new double[noteTime.size()];
-        for (int i = 0; i < noteTime.size(); i++) {
-            n[i] = noteTime.get(i);
-        }
-		final List<Double> a = noteOffset;
-		Thread t = new Thread(new Runnable(){
-				@Override
-				public void run() {
-					for (int i = 0; i < a.size() - 1; i++) {
-						System.out.println("当前方块数量:" + (i + 1) + ",当前方块BPM:" + 60 * 1000 / a.get(i) + "BPM");
-						Double b = a.get(i) * 1000;
-						try {
-							TimeUnit.MICROSECONDS.sleep(b.longValue());
-						} catch (InterruptedException e) {}
-					}
-				}
-			});
-        t.start();
-        if (platform.equals("windows")) {
-        	start(n);
-        }
-    }
- 
     public static int upperBound(Integer[] arr, int value) {
         int left = 0;
         int right = arr.length - 1;
@@ -352,7 +365,6 @@ public class Main {
         }
         return left;
     }
-
     //伪模运算
     public static double fmod(double a, double b) {
         double t = Math.floor(a / b);

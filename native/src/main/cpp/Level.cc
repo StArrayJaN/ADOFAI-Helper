@@ -8,11 +8,11 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#include <WinUser.h>
 #define KEY_DOWN(key) ((GetAsyncKeyState(key)&0x8000)?1:0)
 #endif
 
 #ifdef _MSC_VER
+#include <WinUser.h>
 #pragma comment(lib,"User32.lib")
 #endif
 

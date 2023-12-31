@@ -10,8 +10,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.IntFunction;
-import java.util.stream.Collectors;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -43,7 +41,7 @@ public class Level {
         StringBuilder content = new StringBuilder();
         String line;
         while ((line = reader.readLine()) != null) {
-            content.append(line);
+            content.append(line + "\n");
         }
         reader.close();
         int i = content.toString().indexOf("{");
@@ -82,6 +80,10 @@ public class Level {
     public JSONObject toJSONObject() {
         return new JSONObject(level.toString());
     }
+	
+	public String toString() {
+		return this.toJSONObject().toString();
+	}
 
     public JSONObject findNearbyEvent(int chart, String event) throws JSONException {
 
@@ -276,6 +278,16 @@ public class Level {
         
     }
 
+	public int getEventIndex(int chart,String event) {
+		JSONObject eventObject;
+        for (int a = 0; a < events.length(); a++) {
+            eventObject = events.getJSONObject(a);
+            if (eventObject.getInt("floor") == chart && eventObject.get("eventType").equals(event)) {
+                return a;
+            }
+        }
+		return 0;
+	}
     public void save(String filePath) throws JSONException, IOException {
         File file = new File(currentLevelFile.replace(".adofai", "-mod.adofai"));
         if(filePath != null) {
