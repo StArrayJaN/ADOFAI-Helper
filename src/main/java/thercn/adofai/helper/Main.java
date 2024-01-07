@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -31,7 +32,7 @@ public class Main {
             System.out.println("获取到" + level.getCharts().size() + "个轨道");
             System.out.println("BPM:" + level.getBPM());
             System.out.println("偏移:" + level.getOffset());
-            System.out.println("获取到" + level.getEvents() + "个事件");
+            System.out.println("获取到" + level.events.length() + "个事件");
 			System.out.println(level);
             runMacro(level);
         } catch (IOException | JSONException e) {
@@ -213,13 +214,8 @@ public class Main {
         	start(n);
         }
     }
- 
-    
-    static void runMacroNew(Level l) throws JSONException {
-        //如果需要重写，请将代码放入这里
-    }
 
-    public static String catFile(String filePath) {
+    public static String readFile(String filePath) {
     	File file = new File(filePath);
         BufferedReader reader = null;
         try {
@@ -230,25 +226,20 @@ public class Main {
 				content.append(line);
 			}
 			reader.close();
-			int i = content.toString().indexOf("{");
-			String newJSONStr = content.toString().substring(i);
-			return newJSONStr;
+			return content.toString();
         } catch (Exception err) {
         	err.printStackTrace();
         }
         return null;
-
-
     }
+    
     public static String scannerInput() {
-        Console console = System.console();
-        String input = console.readLine("请输入内容：");
-        if (console != null) {
-            System.out.println("你输入的内容是：" + input);
-        } else {
-            System.out.println("无法读取控制台输入");
+        Scanner scanner = new Scanner(System.in);
+        if (scanner.hasNext("请输入一个文件路径:")) {
+            String input = scanner.nextLine();
+            return input;
         }
-        return input;
+        return null;
     }
 
     static void removeEffects(Level l) throws JSONException {
@@ -326,8 +317,7 @@ public class Main {
                     } else if (!o.getBoolean(key)) {
                         o.put(key, "Disabled");
                     }
-                } catch (Exception err) {
-                }
+                } catch (Exception err) {}
             }
             if (o.get("eventType").equals("ScalePlanets")) {
             	o.remove("targetPlanet");

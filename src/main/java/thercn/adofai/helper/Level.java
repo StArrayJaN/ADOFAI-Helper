@@ -72,32 +72,14 @@ public class Level {
         level.currentLevelFile = filePath;
         return level;
     }
-    
-    public int getEvents() {
-        return events.length();
-    }
 
     public JSONObject toJSONObject() {
-        return new JSONObject(level.toString());
+        return level;
     }
 	
 	public String toString() {
 		return this.toJSONObject().toString();
 	}
-
-    public JSONObject findNearbyEvent(int chart, String event) throws JSONException {
-
-        while (chart-- >= 0) {
-            JSONObject eventObject;
-            for (int i = 0; i < events.length(); i++) {
-                eventObject = (JSONObject) events.get(i);
-                if (eventObject.getInt("floor") == chart && eventObject.get("eventType").equals(event)) {
-                    return eventObject;
-                }
-            }
-        }
-        return null;
-    }
 
     public List<Double> getCharts() throws JSONException {
         //预处理，有需要则在main方法进行更多处理
@@ -288,7 +270,8 @@ public class Level {
         }
 		return 0;
 	}
-    public void save(String filePath) throws JSONException, IOException {
+    
+    public void saveFile(String filePath) throws JSONException, IOException {
         File file = new File(currentLevelFile.replace(".adofai", "-mod.adofai"));
         if(filePath != null) {
         	file = new File(filePath);
