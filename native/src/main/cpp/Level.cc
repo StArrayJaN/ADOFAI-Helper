@@ -25,15 +25,15 @@
  */
 
 extern "C"
-JNIEXPORT void JNICALL Java_thercn_adofai_helper_Main_start(JNIEnv *env, jclass clazz, jdoubleArray valuesObj) {
+JNIEXPORT void JNICALL Java_thercn_adofai_helper_Main_start(JNIEnv *env, jclass clazz, jdoubleArray valuesObj, jstring keys, jdouble minClickInterval) {
     jsize numValues = env->GetArrayLength(valuesObj);
     jdouble* noteTime = env->GetDoubleArrayElements(valuesObj, nullptr);
     std::vector<std::tuple<double,int,bool>>keyEvents;
-    const char usedKeys[]="SB7BG";
+    const char* usedKeys = env->GetStringUTFChars(keys,0);
     const int totKeyCount=strlen(usedKeys);
         for(unsigned i=0;i<numValues;i++){
                 keyEvents.push_back(std::tuple<double,int,bool>{noteTime[i],usedKeys[i%totKeyCount],true});
-                keyEvents.push_back(std::tuple<double,int,bool>{noteTime[i]+0.1,usedKeys[i%totKeyCount],false});
+                keyEvents.push_back(std::tuple<double,int,bool>{noteTime[i]+minClickInterval,usedKeys[i%totKeyCount],false});
         }
         std::sort(keyEvents.begin(),keyEvents.end());
         #ifdef _WIN32
