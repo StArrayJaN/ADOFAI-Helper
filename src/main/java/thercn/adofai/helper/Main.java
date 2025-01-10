@@ -1,7 +1,6 @@
 package thercn.adofai.helper;
 
 import java.io.BufferedReader;
-import java.io.Console;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -9,21 +8,29 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
-import java.util.concurrent.TimeUnit;
+
+import com.github.kwhat.jnativehook.NativeInputEvent;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import com.github.kwhat.jnativehook.keyboard.NativeKeyListener;
+import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
+import com.github.kwhat.jnativehook.GlobalScreen;
+import com.github.kwhat.jnativehook.NativeHookException;
+import java.awt.Robot;
+import java.awt.AWTException;
+import java.awt.event.KeyEvent;
 
 public class Main {
 
     static String platform = System.getProperty("os.name").toLowerCase();
-    public native static void start(double[] keyTimeList);
-    public native static boolean getKeyEvent();
+    public native static void start(double[] keyTimeList, String keys, double minClickInterval);
 
     public static void main(String[] args) {
-        String file = "/storage/emulated/0/test.adofai";
+        String file = "D:\\netease\\Downloads\\Hello_bpm_2024_By_QJsummer(2)\\2\\level.adofai";
         //file = null;
         try {
+
             if (platform.contains("windows")) {
             	System.loadLibrary("native");
             }
@@ -33,36 +40,79 @@ public class Main {
             System.out.println("BPM:" + level.getBPM());
             System.out.println("偏移:" + level.getOffset());
             System.out.println("获取到" + level.events.length() + "个事件");
-			System.out.println(level);
+            //运行任务，removeEffects为删除特效，convertToOld为转成旧版，runMacro为运行宏
+            convertToOld(level);
             runMacro(level);
+            //保存，删特效和转旧版需要，运行宏不需要
+            level.saveFile(null);
         } catch (IOException | JSONException e) {
             e.printStackTrace();
         }
     }
 
-    static void runMacro(Level l) throws JSONException {
-		
 
-        List<Double> angleDataList = l.getCharts();
+	static double currentTime() {
+		return System.nanoTime() / 1E6;
+	}
+
+	static class StartMacro implements NativeKeyListener {
+
+		Double[] bpmList;
+		Robot bot;
+		public StartMacro(Double[] list) {
+			bpmList = list;
+		}
+
+		public void prepare() {
+			try {
+				GlobalScreen.registerNativeHook();
+				GlobalScreen.addNativeKeyListener(this);
+			} catch (NativeHookException e) {}
+
+			try {
+				bot = new Robot();
+			} catch (AWTException e) {}
+		}
 		
+		@Override
+		public void nativeKeyPressed(NativeKeyEvent nativeEvent) {
+			if (nativeEvent.getKeyCode() == NativeKeyEvent.VC_W) {
+				double start = currentTime();
+				int events = 1;
+				while (events < bpmList.length) {
+					double cur = currentTime();
+					double timeMilliseconds = (cur - start) + bpmList[0];
+					while (events < bpmList.length && bpmList[events] <= timeMilliseconds) {
+						bot.keyPress(KeyEvent.VK_E);
+						bot.keyRelease(KeyEvent.VK_E);
+                        System.out.println(events);
+						events++;
+					}
+				}
+                System.exit(0);
+			}
+		}
+
+	}
+    static void runMacro(Level l) throws JSONException {
+        List<Double> angleDataList = l.getCharts();
+
 		JSONArray levelEvents = l.events;
 		//对带有变速和旋转的中旋进行处理
 		for (int i = 0; i < angleDataList.size(); i++) {
-			
-			if (angleDataList.get(i) == 999){
-				
-				if (l.hasEvent(i,"SetSpeed"))
-				{
-					JSONObject a = levelEvents.getJSONObject(l.getEventIndex(i,"SetSpeed"));
-					a.put("floor",a.getInt("floor") + 1);
-				} 
-				else if (l.hasEvent(i,"Twirl")){
-					JSONObject a = levelEvents.getJSONObject(l.getEventIndex(i,"Twirl"));
-					a.put("floor",a.getInt("floor") + 1);
+
+			if (angleDataList.get(i) == 999) {
+
+				if (l.hasEvent(i, "SetSpeed")) {
+					JSONObject a = levelEvents.getJSONObject(l.getEventIndex(i, "SetSpeed"));
+					a.put("floor", a.getInt("floor") + 1);
+				} else if (l.hasEvent(i, "Twirl")) {
+					JSONObject a = levelEvents.getJSONObject(l.getEventIndex(i, "Twirl"));
+					a.put("floor", a.getInt("floor") + 1);
 				}
 			}
 		}
-		
+
         JSONArray parsedChart = new JSONArray();
         int midrCount = 0;
         List<Integer> midrId = new ArrayList<>();
@@ -191,28 +241,22 @@ public class Main {
 
         }
 
-        System.out.println("处理完成,按W开始");
+
         double[] n = new double[noteTime.size()];
+		Double[] v = new Double[noteTime.size()];
         for (int i = 0; i < noteTime.size(); i++) {
             n[i] = noteTime.get(i);
+			v[i] = noteTime.get(i);
         }
-		final List<Double> a = noteOffset;
-		Thread t = new Thread(new Runnable(){
-				@Override
-				public void run() {
-					for (int i = 0; i < a.size() - 1; i++) {
-						System.out.println("当前方块数量:" + (i + 1) + ",当前方块BPM:" + 60 * 1000 / a.get(i) + "BPM");
-						Double b = a.get(i) * 1000;
-						try {
-							TimeUnit.MICROSECONDS.sleep(b.longValue());
-						} catch (InterruptedException e) {}
-					}
-				}
-			});
-        t.start();
+		System.out.println("处理完成,按W开始");
+		StartMacro start =	new StartMacro(v);
+		start.prepare();
+        /*
         if (platform.contains("windows")) {
-        	start(n);
-        }
+        	start(n,"ABCDEFGH",0.1);
+        } else {
+			start_j(v);
+		}*/
     }
 
     public static String readFile(String filePath) {
@@ -232,7 +276,7 @@ public class Main {
         }
         return null;
     }
-    
+
     public static String scannerInput() {
         Scanner scanner = new Scanner(System.in);
         if (scanner.hasNext("请输入一个文件路径:")) {
@@ -257,6 +301,7 @@ public class Main {
 			"Bloom",
 			"ScreenScroll"
 		};
+
         for (int i = 0; i < effectEvents.length; ++i) {
         	l.removeAllEvent(effectEvents[i], true);
             l.removeAllEvent(effectEvents[i], false);
@@ -293,16 +338,20 @@ public class Main {
 		String ntrue = "Enabled";
 		String nfalse = "Disabled";
 		for (int i = 0; i < newSettingValue.length; i++) {
+            //System.out.println(level.hasSetting(newSettingValue[i]));
 			if (level.hasSetting(newSettingValue[i])) {
 				if (newSettingValue[i].equals("scalingRatio")) {
 					level.setLevelSetting("unscaledSize", level.settings.getInt("scalingRatio"));
 				}
-				if (!newSettingValue[i].equals("scalingRatio") && level.getSetting(newSettingValue[i]).equals("true")) {
+				if (!newSettingValue[i].equals("scalingRatio") && level.getSetting(newSettingValue[i]).equals(true)) {
 					level.setLevelSetting(newSettingValue[i], ntrue);
+
+
 				}
-				if (!newSettingValue[i].equals("scalingRatio") && level.getSetting(newSettingValue[i]).equals("false")) {
+				if (!newSettingValue[i].equals("scalingRatio") && level.getSetting(newSettingValue[i]).equals(false)) {
 					level.setLevelSetting(newSettingValue[i], nfalse);
 				}
+                System.out.println(level.getSetting(newSettingValue[i]).toString().equals("true"));
 			}
 		}
 		for (int i = 0; i < reomveSettings.length; i++) {
@@ -336,9 +385,11 @@ public class Main {
                 } catch (Exception err) {}
             }
         } 
+
         level.removeAllEvent("setFloorIcon", false);
         level.removeAllEvent("AddObject", false);
         level.removeAllEvent("MoveObject", false);
+        //System.out.println(level.settings.toString(2));
 		level.setLevelSetting("version", 12);
 	}
 
