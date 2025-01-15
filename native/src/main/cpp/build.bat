@@ -1,0 +1,1 @@
+g++ Level.cc -I f:\JDK\include -I F:\JDK\include\win32 -shared -o native.dll -static

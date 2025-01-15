@@ -28,6 +28,7 @@ bin/
 /nbdist/
 /.nb-gradle/
 
+*.zip
 ### VS Code ###
 .vscode/
 

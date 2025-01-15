@@ -14,6 +14,7 @@ task run(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     systemProperty 'java.library.path', 'binary'
 }
+
 jar {
     manifest {
         attributes 'Main-Class': 'thercn.adofai.helper.Main'
@@ -23,20 +24,26 @@ jar {
     }
 }
 
+task runJar(type: JavaExec) {
+    dependsOn(jar)
+    mainClass = 'thercn.adofai.helper.Main' // 替换为你的主类
+    classpath = files(jar.archivePath)
+}
+
 dependencies {
     implementation 'org.json:json:20231013'
-    implementation "com.github.kwhat:jnativehook:2.2.2"
+    implementation "com.github.kwhat:jnativehook:+"
 }
 /*
+
 def nativeProject = findProject(":native")
 
 if (nativeProject != null) {
     run.dependsOn ':native:build'
 
     tasks.findByPath(":assemble").dependsOn ':native:linkDebug'
-}*/
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
+}
+*/
 
 test {
     useJUnitPlatform()

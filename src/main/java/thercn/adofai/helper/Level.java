@@ -216,11 +216,12 @@ public class Level {
         return chartEvents;
     }
 
-    public JSONObject getEvent(int chart, List<JSONObject> events, String event) throws JSONException {
-        for (int i = 0; i < events.size(); i++) {
-            if (events.get(i).get("eventType").equals(event)) {
-                if (hasEvent(chart, events.get(i).get("eventType").toString())) {
-                    return events.get(i);
+    public JSONObject getEvent(int chart, String event) throws JSONException {
+        List<JSONObject> eventList = getChartEvents(chart);
+        for (JSONObject jsonObject : eventList) {
+            if (jsonObject.get("eventType").equals(event)) {
+                if (hasEvent(chart, jsonObject.get("eventType").toString())) {
+                    return jsonObject;
                 }
             }
         }
@@ -230,7 +231,7 @@ public class Level {
     public boolean hasEvent(int chart, String event) throws JSONException {
         JSONObject eventObject;
         for (int a = 0; a < events.length(); a++) {
-            eventObject = (JSONObject) events.get(a);
+            eventObject = events.getJSONObject(a);
             if ((int) eventObject.get("floor") == chart && eventObject.get("eventType").equals(event)) {
                 return true;
             }
@@ -257,7 +258,6 @@ public class Level {
             }
         }
         }
-        
     }
 
 	public int getEventIndex(int chart,String event) {

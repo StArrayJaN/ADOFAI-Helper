@@ -6,9 +6,7 @@ pluginManagement {
     }
 }
 rootProject.name = 'ADOFAI-Helper'
-/*
 def currentOs = org.gradle.internal.os.OperatingSystem.current()
 if (currentOs.windows) {
     include('native')
 }
-*/
