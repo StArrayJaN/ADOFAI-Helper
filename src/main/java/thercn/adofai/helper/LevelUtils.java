@@ -307,12 +307,23 @@ public class LevelUtils {
 
         @Override
         public void nativeKeyPressed(NativeKeyEvent nativeEvent) {
-            if (nativeEvent.getKeyCode() == NativeKeyEvent.VC_W) {
-                thread.start();
-            } else if (nativeEvent.getKeyCode() == NativeKeyEvent.VC_LEFT) {
-                offset -= 5;
-            } else if (nativeEvent.getKeyCode() == NativeKeyEvent.VC_RIGHT) {
-                offset += 5;
+            switch (nativeEvent.getKeyCode()) {
+                case NativeKeyEvent.VC_W:
+                    thread.start();
+                    break;
+                case NativeKeyEvent.VC_LEFT:
+                    offset -= 5;
+                    break;
+                case NativeKeyEvent.VC_RIGHT:
+                    offset += 5;
+                    break;
+                case NativeKeyEvent.VC_Q:
+                    breaked = true;
+                    System.exit(0);
+                    break;
+                default:
+                    // 可以在这里处理其他情况，如果需要的话
+                    break;
             }
         }
     }

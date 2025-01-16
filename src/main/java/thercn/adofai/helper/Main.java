@@ -13,16 +13,12 @@ public class Main {
 //    static String platform = System.getProperty("os.name").toLowerCase();
 //    public native static void start(double[] keyTimeList);
 //    public native static boolean getKeyEvent();
-    static String file = "F:\\ADOFAI\\HYPER ULTRA JACKPOT\\level.adofai";
     static String keyList = "ASDFGHJKLZXCVBNM";
 
-    static {
-        extractDll();
-    }
-
-    public static void main(String[] args) {
+    public static void main(String... args) {
+        String file = "";
         if (checkIsJar()) {
-            scanInput();
+            file = scanInput();
         }
         try {
             Level level = Level.readLevelFile(file);
@@ -31,24 +27,29 @@ public class Main {
             System.out.println("BPM:" + level.getBPM());
             System.out.println("偏移:" + level.getOffset());
             System.out.println("获取到" + level.events.length() + "个事件");
+            System.out.println();
             LevelUtils.runMacro(level,keyList);
         } catch (IOException | JSONException e) {
             e.printStackTrace();
         }
     }
 
-    public static void scanInput() {
+    public static String scanInput() {
         Scanner scanner = new Scanner(System.in);
         System.out.println("请输入.adofai文件路径");
         String input = scanner.nextLine();
+        String file = "";
         if (Files.exists(Paths.get(input))) {
-            file = input;
+            file = input.replace("\"", "");
+        } else {
+            main();
         }
         System.out.println("请输入键位(例如:ASDFG):");
         String keys = scanner.nextLine();
         keyList = keys.toUpperCase();
         System.out.println("键位:" + keyList);
         scanner.close();
+        return file;
     }
 
     public static void extractDll() {
