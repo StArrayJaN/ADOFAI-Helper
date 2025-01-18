@@ -14,14 +14,18 @@ import java.util.List;
 
 public class LevelUtils {
 
+    public static ProcessListener processListener;
+
+    public interface ProcessListener {
+        void onProcessDone(String message,State state);
+        void onProcessChange(String message, int progress);
+    }
     public static void runMacro(Level l,String keyList) throws JSONException {
         List<Double> angleDataList = l.getCharts();
         JSONArray levelEvents = l.events;
         //对带有变速和旋转的中旋进行处理
         for (int i = 0; i < angleDataList.size(); i++) {
-
             if (angleDataList.get(i) == 999) {
-
                 if (l.hasEvent(i, "SetSpeed")) {
                     JSONObject a = levelEvents.getJSONObject(l.getEventIndex(i, "SetSpeed"));
                     a.put("floor", a.getInt("floor") + 1);
@@ -30,6 +34,10 @@ public class LevelUtils {
                     a.put("floor", a.getInt("floor") + 1);
                 }
             }
+        }
+
+        if (processListener != null) {
+            processListener.onProcessChange("处理轨道数据", 20);
         }
 
         JSONArray parsedChart = new JSONArray();
@@ -59,6 +67,11 @@ public class LevelUtils {
             }
 
         }
+
+        if (processListener != null) {
+            processListener.onProcessChange("处理事件数据", 40);
+        }
+
         double angle = fmod(angleDataList.get(angleDataList.size() - 1), 360);
         //创建一个json节点
         JSONObject temp = new JSONObject();
@@ -126,6 +139,10 @@ public class LevelUtils {
             /* Huihui  end  */
         }
 
+        if (processListener != null) {
+            processListener.onProcessChange("处理其他数据", 60);
+        }
+
         double BPM = l.getBPM() * pitch;
         int direction = 1;
         for (int i = 0; i < parsedChart.length(); i++) {
@@ -141,9 +158,12 @@ public class LevelUtils {
             } else {
                 BPM = (float) ob.getDouble("bpm");
             }
-
-
         }
+
+        if (processListener != null) {
+            processListener.onProcessChange("处理速度数据", 80);
+        }
+
         List<Double> noteTime = new ArrayList<>(),
                 noteOffset = new ArrayList<>();
         {
@@ -214,11 +234,22 @@ public class LevelUtils {
             n[i] = noteTime.get(i);
             v[i] = noteTime.get(i);
         }
-        System.out.println("处理完成,按W开始");
+
+        if (processListener != null) {
+            processListener.onProcessChange("处理完成", 100);
+            processListener.onProcessDone("""
+                    处理完成，按W开始
+                    按←和→来调整偏移
+                    按Q退出""",State.FINISHED);
+        }
 
         StartMacro start = new StartMacro(v);
         start.setKeyList(keyList);
-        start.startHook();
+        try {
+            start.startHook();
+        } catch (NativeHookException e) {
+            throw new RuntimeException(e);
+        }
     }
 
         private static int upperBound(Integer[] arr, int value) {
@@ -251,9 +282,10 @@ public class LevelUtils {
         Double[] bpmList;
         Robot bot;
         double offset = 0;
-        String keyList = "ASDFGHJKLZXCVBNM";
+        String keyList = "A";
         Thread thread;
         boolean breaked;
+        List<Integer> keys;
 
         public StartMacro(Double[] list) {
             bpmList = list;
@@ -267,25 +299,27 @@ public class LevelUtils {
 
         public void setKeyList(String keyList) {
             this.keyList = keyList;
+            char[] keyChars = keyList.toCharArray();
+            keys = new ArrayList<>();
+            for (char c : keyChars) {
+                keys.add(KeyEvent.getExtendedKeyCodeForChar(c));
+            }
         }
 
-        public void startHook() {
-            try {
-                GlobalScreen.registerNativeHook();
-                GlobalScreen.addNativeKeyListener(this);
-            } catch (NativeHookException e) {
-                throw new RuntimeException(e);
-            }
+        public void startHook() throws NativeHookException {
+            GlobalScreen.registerNativeHook();
+            GlobalScreen.addNativeKeyListener(this);
+        }
+
+        public void stopHook() {
+            breaked = true;
+
+            GlobalScreen.removeNativeKeyListener(this);
         }
 
         public Thread getThread() {
             return new Thread(() -> {
                 int keyIndex = 0;
-                char[] keyChars = keyList.toCharArray();
-                List<Integer> keys = new ArrayList<>();
-                for (char c : keyChars) {
-                    keys.add(KeyEvent.getExtendedKeyCodeForChar(c));
-                }
                 double start = currentTime();
                 int events = 1;
                 while (events < bpmList.length) {
@@ -293,7 +327,7 @@ public class LevelUtils {
                     double timeMilliseconds = (cur - start) + bpmList[0];
                     while (events < bpmList.length && bpmList[events] + offset <= timeMilliseconds) {
                         //根据bpm计算延迟
-                        if (keyIndex >= keys.size() - 1) keyIndex = 0;
+                        if (keyIndex >= keys.size()) keyIndex = 0;
                         bot.keyPress(keys.get(keyIndex));
                         bot.keyRelease(keys.get(keyIndex));
                         //System.out.printf("进度:%d/%d,BPM:%f,延迟:%fms,偏移:%f\n",events,bpmList.length,60000 / (bpmList[events] - bpmList[events -1]), bpmList[events] - bpmList[events -1],offset);
@@ -301,6 +335,9 @@ public class LevelUtils {
                         keyIndex++;
                     }
                     if (breaked) break;
+                }
+                if (processListener != null) {
+                    processListener.onProcessDone("已结束",State.FINISHED);
                 }
             });
         }
@@ -319,10 +356,10 @@ public class LevelUtils {
                     break;
                 case NativeKeyEvent.VC_Q:
                     breaked = true;
-                    System.exit(0);
-                    break;
-                default:
-                    // 可以在这里处理其他情况，如果需要的话
+                    thread.interrupt();
+                    if (processListener != null) {
+                        processListener.onProcessDone("已退出",State.STOPPED);
+                    }
                     break;
             }
         }

@@ -1,11 +1,13 @@
 plugins {
     id 'java'
+    id 'edu.sc.seis.launch4j' version '3.0.6'
 }
 
 group = 'thercn.adofai.helper'
 version = '1.0-SNAPSHOT'
 
 repositories {
+    google()
     mavenCentral()
 }
 
@@ -24,6 +26,10 @@ jar {
     }
 }
 
+launch4j {
+    mainClassName = 'thercn.adofai.helper.Main'
+}
+
 task runJar(type: JavaExec) {
     dependsOn(jar)
     mainClass = 'thercn.adofai.helper.Main' // 替换为你的主类
@@ -33,6 +39,7 @@ task runJar(type: JavaExec) {
 dependencies {
     implementation 'org.json:json:20231013'
     implementation "com.github.kwhat:jnativehook:+"
+    implementation 'io.github.vincenzopalazzo:material-ui-swing:1.1.4'
 }
 /*
 
