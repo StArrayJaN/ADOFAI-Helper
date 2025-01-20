@@ -20,6 +20,7 @@ public class LevelUtils {
         void onProcessDone(String message,State state);
         void onProcessChange(String message, int progress);
     }
+
     public static void runMacro(Level l,String keyList) throws JSONException {
         List<Double> angleDataList = l.getCharts();
         JSONArray levelEvents = l.events;
@@ -313,7 +314,6 @@ public class LevelUtils {
 
         public void stopHook() {
             breaked = true;
-
             GlobalScreen.removeNativeKeyListener(this);
         }
 
@@ -330,7 +330,14 @@ public class LevelUtils {
                         if (keyIndex >= keys.size()) keyIndex = 0;
                         bot.keyPress(keys.get(keyIndex));
                         bot.keyRelease(keys.get(keyIndex));
-                        //System.out.printf("进度:%d/%d,BPM:%f,延迟:%fms,偏移:%f\n",events,bpmList.length,60000 / (bpmList[events] - bpmList[events -1]), bpmList[events] - bpmList[events -1],offset);
+                        if (Main.enableConsole) {
+                            System.out.printf("进度:%d/%d,BPM:%f,延迟:%fms,偏移:%f,键位:%s\n",events,
+                                    bpmList.length,
+                                    60000 / (bpmList[events] - bpmList[events -1]),
+                                    bpmList[events] - bpmList[events -1],
+                                    offset,
+                                    KeyEvent.getKeyText(keys.get(keyIndex)));
+                        }
                         events++;
                         keyIndex++;
                     }

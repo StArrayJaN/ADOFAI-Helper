@@ -8,8 +8,7 @@ import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.plaf.FontUIResource;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
 
@@ -20,24 +19,104 @@ public class Main extends JFrame {
     private JButton selectFileButton;
     private JButton processButton;
     private JProgressBar progressBar;
+    private JFrame consoleFrame;
+    private JToggleButton toggleButton;
+    private Point initialClick = new Point(0, 0);
+    private Dimension size = new Dimension(470, 100);
+    public static boolean enableConsole = false;
 
     public Main() {
+        initializeUI();
+        addComponents();
+        addListeners();
+        System.setOut(new SwingPrintStream(info));
+    }
+
+    private void initializeUI() {
         setTitle("ADOFAI Helper");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setMinimumSize(new Dimension(400, 300));
+        setMinimumSize(new Dimension(400, 200));
         setLayout(null);
+    }
 
+    private void addComponents() {
         filePathField = new JTextField();
         filePathField.setBounds(50, 20, 200, 30);
+        add(filePathField);
 
         keyList = new HintTextField("请输入键位");
         keyList.setBounds(50, 60, 200, 30);
-
-        add(filePathField);
         add(keyList);
 
         selectFileButton = new JButton("选择文件");
         selectFileButton.setBounds(260, 20, 100, 30);
+        add(selectFileButton);
+
+        processButton = new JButton("运行宏");
+        processButton.setBounds(150, 100, 100, 30);
+        add(processButton);
+
+        progressBar = new JProgressBar();
+        progressBar.setBounds(50, 140, 300, 20);
+        progressBar.setMaximum(100);
+        progressBar.setVisible(false);
+        add(progressBar);
+
+        info = new JTextArea();
+        info.setSize(size);
+        info.setEditable(false);
+        info.setText("欢迎使用ADOFAI Helper\n");
+        JScrollPane scrollPane = new JScrollPane(info);
+        scrollPane.setAutoscrolls(true);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+        // 设置 JScrollPane 的首选大小
+        scrollPane.setSize(size);
+        scrollPane.getVerticalScrollBar().addAdjustmentListener(new AdjustmentListener() {
+            @Override
+            public void adjustmentValueChanged(AdjustmentEvent e) {
+                e.getAdjustable().setValue(e.getAdjustable().getMaximum());
+            }
+        });
+        add(scrollPane);
+
+        LevelUtils.processListener = new LevelUtils.ProcessListener() {
+            @Override
+            public void onProcessDone(String message, State state) {
+                info.append(message + "\n");
+                if (state == State.STOPPED) {
+                    System.exit(0);
+                }
+            }
+
+            @Override
+            public void onProcessChange(String message, int progress) {
+                if (progress > 0 && !progressBar.isVisible()) {
+                    progressBar.setVisible(true);
+                }
+                info.append(message + "\n");
+                progressBar.setValue(progress);
+            }
+        };
+
+        consoleFrame = new JFrame("控制台");
+        consoleFrame.setUndecorated(true);
+        consoleFrame.setSize(size);
+        consoleFrame.setLocationRelativeTo(null);
+        consoleFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        addConsoleFramePopupMenu();
+        addConsoleFrameMouseListeners();
+        consoleFrame.add(scrollPane);
+        consoleFrame.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
+        consoleFrame.setVisible(false);
+
+        toggleButton = new JToggleButton("显示控制台");
+        toggleButton.setBounds(260, 100, 110, 30);
+        add(toggleButton);
+    }
+
+    private void addListeners() {
         selectFileButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -52,10 +131,7 @@ public class Main extends JFrame {
                 }
             }
         });
-        add(selectFileButton);
 
-        processButton = new JButton("运行宏");
-        processButton.setBounds(150, 100, 100, 30);
         processButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -79,38 +155,54 @@ public class Main extends JFrame {
                 }
             }
         });
-        add(processButton);
 
-        progressBar = new JProgressBar();
-        progressBar.setBounds(50, 140, 300, 30);
-        progressBar.setVisible(false);
-        add(progressBar);
-
-        info = new JTextArea();
-        info.setMinimumSize(new Dimension(300, 60));
-        info.setRows(10);
-
-        JScrollPane scrollPane = new JScrollPane(info);
-        scrollPane.setBounds(50, 180, 300, 60);
-        add(scrollPane);
-        LevelUtils.processListener = new LevelUtils.ProcessListener() {
+        toggleButton.addActionListener(new ActionListener() {
             @Override
-            public void onProcessDone(String message, State state) {
-                info.append(message + "\n");
-                if (state == State.STOPPED) {
-                    System.exit(0);
+            public void actionPerformed(ActionEvent e) {
+                if (!toggleButton.isSelected()) {
+                    consoleFrame.dispose();
+                } else {
+                    consoleFrame.setVisible(true);
+                }
+                enableConsole = toggleButton.isSelected();
+            }
+        });
+    }
+
+    private void addConsoleFramePopupMenu() {
+        JPopupMenu popupMenu = new JPopupMenu();
+        JMenuItem menuItem = new JMenuItem("置顶");
+        menuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                consoleFrame.setAlwaysOnTop(!consoleFrame.isAlwaysOnTop());
+            }
+        });
+        popupMenu.add(menuItem);
+        info.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                initialClick = e.getPoint();
+                if (e.getButton() == MouseEvent.BUTTON3) {
+                    popupMenu.show(consoleFrame, e.getX(), e.getY());
                 }
             }
+        });
+    }
 
+    private void addConsoleFrameMouseListeners() {
+        info.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
-            public void onProcessChange(String message, int progress) {
-                if (progress > 0 && !progressBar.isVisible()) {
-                    progressBar.setVisible(true);
-                }
-                info.append(message + "\n");
-                progressBar.setValue(progress);
+            public void mouseDragged(MouseEvent e) {
+                int thisX = consoleFrame.getLocation().x;
+                int thisY = consoleFrame.getLocation().y;
+                int xMoved = (thisX + e.getX()) - (thisX + initialClick.x);
+                int yMoved = (thisY + e.getY()) - (thisY + initialClick.y);
+                int X = thisX + xMoved;
+                int Y = thisY + yMoved;
+                consoleFrame.setLocation(X, Y);
             }
-        };
+        });
     }
 
     private boolean keyListCanUse(String keyList) {
@@ -122,6 +214,7 @@ public class Main extends JFrame {
         }
         return true;
     }
+
     public static void main(String[] args) throws NativeHookException {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
