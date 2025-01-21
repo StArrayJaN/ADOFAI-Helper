@@ -23,9 +23,10 @@ public class Main extends JFrame {
     private JToggleButton toggleButton;
     private Point initialClick = new Point(0, 0);
     private Dimension size = new Dimension(470, 100);
+    private LastOpenManager lastOpenManager = LastOpenManager.getInstance();
     public static boolean enableConsole = false;
 
-    public Main() {
+    public Main() throws IOException {
         initializeUI();
         addComponents();
         addListeners();
@@ -66,6 +67,12 @@ public class Main extends JFrame {
         info.setSize(size);
         info.setEditable(false);
         info.setText("欢迎使用ADOFAI Helper\n");
+
+        if (!lastOpenManager.getLastOpenFile().equals("") || !lastOpenManager.getKeyList().equals("")) {
+            filePathField.setText(lastOpenManager.getLastOpenFile());
+            keyList.setText(lastOpenManager.getKeyList());
+        }
+
         JScrollPane scrollPane = new JScrollPane(info);
         scrollPane.setAutoscrolls(true);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
@@ -145,13 +152,20 @@ public class Main extends JFrame {
                     JOptionPane.showMessageDialog(null, "键位不能包含Q、W、→、←");
                     return;
                 }
-                {
-                    try {
-                        Level level = Level.readLevelFile(filePath);
-                        LevelUtils.runMacro(level, keyList.getText().toUpperCase());
-                    } catch (IOException ex) {
-                        throw new RuntimeException(ex);
-                    }
+                lastOpenManager.setLastOpenFile(filePath);
+                lastOpenManager.setKeyList(keyList.getText());
+                try {
+                    new Thread(() -> {
+                        try {
+                            Level level = Level.readLevelFile(filePath);
+                            LevelUtils.runMacro(level, keyList.getText().toUpperCase());
+                        } catch (IOException ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    }).start();
+                    lastOpenManager.save();
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
                 }
             }
         });
@@ -171,14 +185,23 @@ public class Main extends JFrame {
 
     private void addConsoleFramePopupMenu() {
         JPopupMenu popupMenu = new JPopupMenu();
-        JMenuItem menuItem = new JMenuItem("置顶");
-        menuItem.addActionListener(new ActionListener() {
+        JMenuItem alwaysOnTop = new JMenuItem("置顶");
+        JMenuItem close = new JMenuItem("关闭");
+        alwaysOnTop.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 consoleFrame.setAlwaysOnTop(!consoleFrame.isAlwaysOnTop());
             }
         });
-        popupMenu.add(menuItem);
+        close.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                consoleFrame.dispose();
+                toggleButton.setSelected(false);
+            }
+        });
+        popupMenu.add(alwaysOnTop);
+        popupMenu.add(close);
         info.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
@@ -215,28 +238,34 @@ public class Main extends JFrame {
         return true;
     }
 
+    public static String getRuntimePath() {
+        String path = Main.class.getResource("Main.class").getPath();
+        return new File(path.split("!")[0].replace("file:/", "")).getParent();
+    }
+
     public static void main(String[] args) throws NativeHookException {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                Main main = new Main();
-                main.setVisible(true);
-                var theme = new JMarsDarkTheme() {
-                    @Override
-                    public void installFonts() {
-                        this.fontItalic = new FontUIResource(Font.SANS_SERIF, Font.ITALIC, 12);
-                        this.fontBold = new FontUIResource(Font.SANS_SERIF, Font.BOLD, 12);
-                        this.fontRegular = new FontUIResource(Font.SANS_SERIF, Font.PLAIN, 12);
-                        this.fontMedium = new FontUIResource(Font.SANS_SERIF, Font.PLAIN, 12);
-                    }
-                };
-                MaterialLookAndFeel materialLookAndFeel = new MaterialLookAndFeel(theme);
                 try {
+                    Main main = new Main();
+                    main.setVisible(true);
+                    var theme = new JMarsDarkTheme() {
+                        @Override
+                        public void installFonts() {
+                            this.fontItalic = new FontUIResource(Font.SANS_SERIF, Font.ITALIC, 12);
+                            this.fontBold = new FontUIResource(Font.SANS_SERIF, Font.BOLD, 12);
+                            this.fontRegular = new FontUIResource(Font.SANS_SERIF, Font.PLAIN, 12);
+                            this.fontMedium = new FontUIResource(Font.SANS_SERIF, Font.PLAIN, 12);
+                        }
+                    };
+                    MaterialLookAndFeel materialLookAndFeel = new MaterialLookAndFeel(theme);
                     UIManager.setLookAndFeel(materialLookAndFeel);
-                } catch (UnsupportedLookAndFeelException e) {
+                    SwingUtilities.updateComponentTreeUI(main);
+                } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
-                SwingUtilities.updateComponentTreeUI(main);
+
             }
         });
     }

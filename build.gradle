@@ -36,6 +36,11 @@ task runJar(type: JavaExec) {
     classpath = files(jar.archivePath)
 }
 
+task runEXE(type: Exec) {
+    dependsOn createAllExecutables
+    workingDir launch4j.outputDirectory.asFile.get()
+    commandLine launch4j.outputDirectory.asFile.get().getAbsolutePath() + File.separator + launch4j.outfile.get()
+}
 dependencies {
     implementation 'org.json:json:20231013'
     implementation "com.github.kwhat:jnativehook:+"

@@ -7,6 +7,8 @@ import com.github.kwhat.jnativehook.keyboard.NativeKeyListener;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
@@ -38,7 +40,7 @@ public class LevelUtils {
         }
 
         if (processListener != null) {
-            processListener.onProcessChange("处理轨道数据", 20);
+            SwingUtilities.invokeLater(() -> processListener.onProcessChange("处理轨道数据", 10));
         }
 
         JSONArray parsedChart = new JSONArray();
@@ -70,7 +72,7 @@ public class LevelUtils {
         }
 
         if (processListener != null) {
-            processListener.onProcessChange("处理事件数据", 40);
+            SwingUtilities.invokeLater(() -> processListener.onProcessChange("处理轨道数据", 20));
         }
 
         double angle = fmod(angleDataList.get(angleDataList.size() - 1), 360);
@@ -141,7 +143,7 @@ public class LevelUtils {
         }
 
         if (processListener != null) {
-            processListener.onProcessChange("处理其他数据", 60);
+            SwingUtilities.invokeLater(() -> processListener.onProcessChange("处理事件数据", 40));
         }
 
         double BPM = l.getBPM() * pitch;
@@ -162,7 +164,7 @@ public class LevelUtils {
         }
 
         if (processListener != null) {
-            processListener.onProcessChange("处理速度数据", 80);
+            SwingUtilities.invokeLater(() -> processListener.onProcessChange("处理轨道数据", 60));
         }
 
         List<Double> noteTime = new ArrayList<>(),
@@ -237,11 +239,13 @@ public class LevelUtils {
         }
 
         if (processListener != null) {
-            processListener.onProcessChange("处理完成", 100);
-            processListener.onProcessDone("""
-                    处理完成，按W开始
-                    按←和→来调整偏移
-                    按Q退出""",State.FINISHED);
+            SwingUtilities.invokeLater(() -> {
+                processListener.onProcessChange("处理完成", 100);
+                processListener.onProcessDone("""
+                        处理完成，按W开始
+                        按←和→来调整偏移
+                        按Q退出""", State.FINISHED);
+            });
         }
 
         StartMacro start = new StartMacro(v);
