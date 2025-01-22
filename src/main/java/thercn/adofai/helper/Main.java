@@ -1,12 +1,16 @@
 package thercn.adofai.helper;
 
+import com.formdev.flatlaf.*;
+import com.formdev.flatlaf.themes.FlatMacDarkLaf;
+import com.formdev.flatlaf.themes.FlatMacLightLaf;
 import com.github.kwhat.jnativehook.NativeHookException;
-import mdlaf.MaterialLookAndFeel;
-import mdlaf.themes.JMarsDarkTheme;
-
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.plaf.FontUIResource;
+import javax.swing.plaf.metal.MetalLookAndFeel;
+import javax.swing.plaf.multi.MultiLookAndFeel;
+import javax.swing.plaf.nimbus.NimbusLookAndFeel;
+import javax.swing.plaf.synth.SynthLookAndFeel;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
@@ -243,29 +247,14 @@ public class Main extends JFrame {
         return new File(path.split("!")[0].replace("file:/", "")).getParent();
     }
 
-    public static void main(String[] args) throws NativeHookException {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Main main = new Main();
-                    main.setVisible(true);
-                    var theme = new JMarsDarkTheme() {
-                        @Override
-                        public void installFonts() {
-                            this.fontItalic = new FontUIResource(Font.SANS_SERIF, Font.ITALIC, 12);
-                            this.fontBold = new FontUIResource(Font.SANS_SERIF, Font.BOLD, 12);
-                            this.fontRegular = new FontUIResource(Font.SANS_SERIF, Font.PLAIN, 12);
-                            this.fontMedium = new FontUIResource(Font.SANS_SERIF, Font.PLAIN, 12);
-                        }
-                    };
-                    MaterialLookAndFeel materialLookAndFeel = new MaterialLookAndFeel(theme);
-                    UIManager.setLookAndFeel(materialLookAndFeel);
-                    SwingUtilities.updateComponentTreeUI(main);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-
+    public static void main(String[] args) {
+        FlatLaf.setup(new FlatMacDarkLaf());
+        SwingUtilities.invokeLater(() -> {
+            try {
+                Main main = new Main();
+                main.setVisible(true);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         });
     }

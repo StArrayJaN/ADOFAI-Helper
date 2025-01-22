@@ -44,7 +44,7 @@ task runEXE(type: Exec) {
 dependencies {
     implementation 'org.json:json:20231013'
     implementation "com.github.kwhat:jnativehook:+"
-    implementation 'io.github.vincenzopalazzo:material-ui-swing:1.1.4'
+    implementation 'com.formdev:flatlaf:+'
 }
 /*
 
