@@ -28,6 +28,7 @@ jar {
 
 launch4j {
     mainClassName = 'thercn.adofai.helper.Main'
+    jvmOptions = ['-Dfile.encoding=UTF-8']
 }
 
 task runJar(type: JavaExec) {

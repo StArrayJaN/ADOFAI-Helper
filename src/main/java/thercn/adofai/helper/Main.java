@@ -4,6 +4,9 @@ import com.formdev.flatlaf.*;
 import com.formdev.flatlaf.themes.FlatMacDarkLaf;
 import com.formdev.flatlaf.themes.FlatMacLightLaf;
 import com.github.kwhat.jnativehook.NativeHookException;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.plaf.FontUIResource;
@@ -15,6 +18,8 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.util.List;
 
 public class Main extends JFrame {
     private JTextField filePathField;
@@ -25,6 +30,8 @@ public class Main extends JFrame {
     private JProgressBar progressBar;
     private JFrame consoleFrame;
     private JToggleButton toggleButton;
+    private JCheckBox saveDelayTableButton;
+    private boolean saveDelayTable = false;
     private Point initialClick = new Point(0, 0);
     private Dimension size = new Dimension(470, 100);
     private LastOpenManager lastOpenManager = LastOpenManager.getInstance();
@@ -61,8 +68,12 @@ public class Main extends JFrame {
         processButton.setBounds(150, 100, 100, 30);
         add(processButton);
 
+        saveDelayTableButton = new JCheckBox("保存延迟表");
+        saveDelayTableButton.setBounds(260, 60, 100, 30);
+        add(saveDelayTableButton);
+
         progressBar = new JProgressBar();
-        progressBar.setBounds(50, 140, 300, 20);
+        progressBar.setBounds(0, 140, getWidth(), 20);
         progressBar.setMaximum(100);
         progressBar.setVisible(false);
         add(progressBar);
@@ -109,6 +120,25 @@ public class Main extends JFrame {
                 info.append(message + "\n");
                 progressBar.setValue(progress);
             }
+
+            @Override
+            public void send(Object message) {
+                if (message instanceof List) {
+                    var list = (List) message;
+                    JSONArray delayTable = new JSONArray();
+                    File file = new File(Main.getRuntimePath(), "delayTable.ahjson");
+                    if (saveDelayTable) {
+                        for (var item : list) {
+                            delayTable.put(item);
+                        }
+                        try {
+                            Files.write(file.toPath(), delayTable.toString(2).getBytes());
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
+            }
         };
 
         consoleFrame = new JFrame("控制台");
@@ -133,11 +163,16 @@ public class Main extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 JFileChooser fileChooser = new JFileChooser();
                 fileChooser.setMultiSelectionEnabled(false);
-                fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
-                fileChooser.setFileFilter(new FileNameExtensionFilter("ADOFAI Level File", "adofai"));
+                fileChooser.setCurrentDirectory(new File(getRuntimePath()));
+                fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("ADOFAI Level File", "adofai"));
+                fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("ADOFAI Helper Delay Table", "ahjson"));
                 int returnValue = fileChooser.showOpenDialog(null);
                 if (returnValue == JFileChooser.APPROVE_OPTION) {
                     File selectedFile = fileChooser.getSelectedFile();
+                    if (saveDelayTable && selectedFile.getName().endsWith(".ahjson")) {
+                        JOptionPane.showMessageDialog(null, "请选择一个adofai文件");
+                        return;
+                    }
                     filePathField.setText(selectedFile.getAbsolutePath());
                 }
             }
@@ -161,8 +196,14 @@ public class Main extends JFrame {
                 try {
                     new Thread(() -> {
                         try {
-                            Level level = Level.readLevelFile(filePath);
-                            LevelUtils.runMacro(level, keyList.getText().toUpperCase());
+                            if (filePath.endsWith(".adofai")) {
+                                Level level = Level.readLevelFile(filePath);
+                                LevelUtils.runMacro(level, keyList.getText().toUpperCase());
+                            } else if (filePath.endsWith(".ahjson")) {
+                                progressBar.setVisible(true);
+                                LevelUtils.runMacro(filePath, keyList.getText().toUpperCase());
+                                progressBar.setValue(100);
+                            }
                         } catch (IOException ex) {
                             throw new RuntimeException(ex);
                         }
@@ -183,6 +224,18 @@ public class Main extends JFrame {
                     consoleFrame.setVisible(true);
                 }
                 enableConsole = toggleButton.isSelected();
+            }
+        });
+
+        saveDelayTableButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (filePathField.getText().endsWith(".ahjson")) {
+                    saveDelayTableButton.setSelected(false);
+                    JOptionPane.showMessageDialog(null, "请选择一个adofai文件");
+                    return;
+                }
+                saveDelayTable = saveDelayTableButton.isSelected();
             }
         });
     }

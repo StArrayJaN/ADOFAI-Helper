@@ -11,16 +11,21 @@ import org.json.JSONObject;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
 public class LevelUtils {
 
     public static ProcessListener processListener;
+    public static List<Double> delayList = new ArrayList<>();
 
     public interface ProcessListener {
         void onProcessDone(String message,State state);
         void onProcessChange(String message, int progress);
+        void send(Object message);
     }
 
     public static void runMacro(Level l,String keyList) throws JSONException {
@@ -231,11 +236,13 @@ public class LevelUtils {
 
         }
 
-        double[] n = new double[noteTime.size()];
         Double[] v = new Double[noteTime.size()];
         for (int i = 0; i < noteTime.size(); i++) {
-            n[i] = noteTime.get(i);
             v[i] = noteTime.get(i);
+        }
+
+        if (processListener != null) {
+            processListener.send(noteTime);
         }
 
         if (processListener != null) {
@@ -249,6 +256,21 @@ public class LevelUtils {
         }
 
         StartMacro start = new StartMacro(v);
+        start.setKeyList(keyList);
+        try {
+            start.startHook();
+        } catch (NativeHookException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static void runMacro(String delayTable,String keyList) throws IOException {
+        JSONArray array = new JSONArray(new String(Files.readAllBytes(Paths.get(delayTable))));
+        List<Double> list = new ArrayList<>();
+        for (int i = 0; i < array.length(); i++) {
+            list.add(array.getDouble(i));
+        }
+        StartMacro start = new StartMacro(list.toArray(new Double[0]));
         start.setKeyList(keyList);
         try {
             start.startHook();
@@ -374,6 +396,20 @@ public class LevelUtils {
                     break;
             }
         }
+    }
+
+    public static List<Double> genericDelayTable(Double[] bpmList) throws JSONException {
+        List<Double> delayTable = new ArrayList<>();
+        double start = currentTime();
+        int events = 1;
+        while (events < bpmList.length) {
+            double cur = currentTime();
+            double timeMilliseconds = (cur - start) + bpmList[0];
+            System.out.println(bpmList[events]);
+            delayTable.add(timeMilliseconds);
+            events++;
+        }
+        return delayTable;
     }
 
     private static double currentTime() {
