@@ -25,10 +25,9 @@ public class LevelUtils {
     public interface ProcessListener {
         void onProcessDone(String message,State state);
         void onProcessChange(String message, int progress);
-        void send(Object message);
     }
 
-    public static void runMacro(Level l,String keyList) throws JSONException {
+    public static List<Double> getNoteTimes(Level l) throws JSONException {
         List<Double> angleDataList = l.getCharts();
         JSONArray levelEvents = l.events;
         //对带有变速和旋转的中旋进行处理
@@ -236,15 +235,15 @@ public class LevelUtils {
 
         }
 
-        Double[] v = new Double[noteTime.size()];
-        for (int i = 0; i < noteTime.size(); i++) {
-            v[i] = noteTime.get(i);
-        }
+        return noteTime;
+    }
 
-        if (processListener != null) {
-            processListener.send(noteTime);
+    public static void runMacro(String delayTable,String keyList) throws IOException {
+        JSONArray array = new JSONArray(new String(Files.readAllBytes(Paths.get(delayTable))));
+        List<Double> list = new ArrayList<>();
+        for (int i = 0; i < array.length(); i++) {
+            list.add(array.getDouble(i));
         }
-
         if (processListener != null) {
             SwingUtilities.invokeLater(() -> {
                 processListener.onProcessChange("处理完成", 100);
@@ -253,22 +252,6 @@ public class LevelUtils {
                         按←和→来调整偏移
                         按Q退出""", State.FINISHED);
             });
-        }
-
-        StartMacro start = new StartMacro(v);
-        start.setKeyList(keyList);
-        try {
-            start.startHook();
-        } catch (NativeHookException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static void runMacro(String delayTable,String keyList) throws IOException {
-        JSONArray array = new JSONArray(new String(Files.readAllBytes(Paths.get(delayTable))));
-        List<Double> list = new ArrayList<>();
-        for (int i = 0; i < array.length(); i++) {
-            list.add(array.getDouble(i));
         }
         StartMacro start = new StartMacro(list.toArray(new Double[0]));
         start.setKeyList(keyList);

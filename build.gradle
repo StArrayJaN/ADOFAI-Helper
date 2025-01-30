@@ -35,6 +35,7 @@ task runJar(type: JavaExec) {
     dependsOn(jar)
     mainClass = 'thercn.adofai.helper.Main' // 替换为你的主类
     classpath = files(jar.archivePath)
+    //jvmArgs("-Xms 4096M")
 }
 
 task runEXE(type: Exec) {

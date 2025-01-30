@@ -2,18 +2,10 @@ package thercn.adofai.helper;
 
 import com.formdev.flatlaf.*;
 import com.formdev.flatlaf.themes.FlatMacDarkLaf;
-import com.formdev.flatlaf.themes.FlatMacLightLaf;
-import com.github.kwhat.jnativehook.NativeHookException;
 import org.json.JSONArray;
-import org.json.JSONObject;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.plaf.FontUIResource;
-import javax.swing.plaf.metal.MetalLookAndFeel;
-import javax.swing.plaf.multi.MultiLookAndFeel;
-import javax.swing.plaf.nimbus.NimbusLookAndFeel;
-import javax.swing.plaf.synth.SynthLookAndFeel;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
@@ -30,8 +22,7 @@ public class Main extends JFrame {
     private JProgressBar progressBar;
     private JFrame consoleFrame;
     private JToggleButton toggleButton;
-    private JCheckBox saveDelayTableButton;
-    private boolean saveDelayTable = false;
+    private boolean saveDelayTable = true;
     private Point initialClick = new Point(0, 0);
     private Dimension size = new Dimension(470, 100);
     private LastOpenManager lastOpenManager = LastOpenManager.getInstance();
@@ -41,7 +32,7 @@ public class Main extends JFrame {
         initializeUI();
         addComponents();
         addListeners();
-        System.setOut(new SwingPrintStream(info));
+
     }
 
     private void initializeUI() {
@@ -67,10 +58,6 @@ public class Main extends JFrame {
         processButton = new JButton("运行宏");
         processButton.setBounds(150, 100, 100, 30);
         add(processButton);
-
-        saveDelayTableButton = new JCheckBox("保存延迟表");
-        saveDelayTableButton.setBounds(260, 60, 100, 30);
-        add(saveDelayTableButton);
 
         progressBar = new JProgressBar();
         progressBar.setBounds(0, 140, getWidth(), 20);
@@ -119,25 +106,6 @@ public class Main extends JFrame {
                 }
                 info.append(message + "\n");
                 progressBar.setValue(progress);
-            }
-
-            @Override
-            public void send(Object message) {
-                if (message instanceof List) {
-                    var list = (List) message;
-                    JSONArray delayTable = new JSONArray();
-                    File file = new File(Main.getRuntimePath(), "delayTable.ahjson");
-                    if (saveDelayTable) {
-                        for (var item : list) {
-                            delayTable.put(item);
-                        }
-                        try {
-                            Files.write(file.toPath(), delayTable.toString(2).getBytes());
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                }
             }
         };
 
@@ -196,15 +164,9 @@ public class Main extends JFrame {
                 try {
                     new Thread(() -> {
                         try {
-                            if (filePath.endsWith(".adofai")) {
-                                Level level = Level.readLevelFile(filePath);
-                                LevelUtils.runMacro(level, keyList.getText().toUpperCase());
-                            } else if (filePath.endsWith(".ahjson")) {
-                                progressBar.setVisible(true);
-                                LevelUtils.runMacro(filePath, keyList.getText().toUpperCase());
-                                progressBar.setValue(100);
-                            }
-                        } catch (IOException ex) {
+                            progressBar.setVisible(true);
+                            runMacro(keyList.getText().toUpperCase(), filePath);
+                        } catch (Exception ex) {
                             throw new RuntimeException(ex);
                         }
                     }).start();
@@ -221,23 +183,43 @@ public class Main extends JFrame {
                 if (!toggleButton.isSelected()) {
                     consoleFrame.dispose();
                 } else {
+                    System.setOut(new SwingPrintStream(info));
                     consoleFrame.setVisible(true);
                 }
                 enableConsole = toggleButton.isSelected();
             }
         });
+    }
 
-        saveDelayTableButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (filePathField.getText().endsWith(".ahjson")) {
-                    saveDelayTableButton.setSelected(false);
-                    JOptionPane.showMessageDialog(null, "请选择一个adofai文件");
-                    return;
+    public void runMacro(String keyList, String filePath) throws Exception {
+        File file = new File(filePath);
+        if (!file.exists()) return;
+        if (file.getName().endsWith(".adofai")) {
+            JSONArray delayTable = new JSONArray();
+            Level level = Level.readLevelFile(file.toString());
+            var list = LevelUtils.getNoteTimes(level);
+            if (saveDelayTable) {
+                for (var item : list) {
+                    delayTable.put(item);
                 }
-                saveDelayTable = saveDelayTableButton.isSelected();
+                try {
+                    file = new File(getLevelDirectory(level),"delayTable.ahjson");
+                    Files.write(file.toPath(), delayTable.toString(2).getBytes());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
-        });
+        }
+
+        if (file.getName().endsWith(".ahjson")) {
+            genericHitSound(file.toString(),file.toString());
+        }
+        System.out.println("运行宏:" + file);
+        LevelUtils.runMacro(file.toString(), keyList);
+    }
+
+    public static String getLevelDirectory(Level level) {
+        return new File(level.currentLevelFile).getParent();
     }
 
     private void addConsoleFramePopupMenu() {
@@ -298,6 +280,20 @@ public class Main extends JFrame {
     public static String getRuntimePath() {
         String path = Main.class.getResource("Main.class").getPath();
         return new File(path.split("!")[0].replace("file:/", "")).getParent();
+    }
+
+    public static void exportResources(String path) throws IOException {
+        String runtimePath = getRuntimePath();
+        File file = new File(runtimePath,path);
+        if (!file.exists()) {
+            Files.write(file.toPath(), Main.class.getResourceAsStream("/" + path).readAllBytes());
+        }
+    }
+
+    public static void genericHitSound(String string,String ahjson) throws Exception {
+        exportResources("hit.wav");
+        File file = new File(getRuntimePath(), "hit.wav");
+        AudioMerger.export(file.toString(), ahjson, new File(string).getParent() + File.separator + "hitSound.wav");
     }
 
     public static void main(String[] args) {

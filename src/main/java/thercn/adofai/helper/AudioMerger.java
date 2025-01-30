@@ -232,4 +232,21 @@ public class AudioMerger {
         // 执行混合
         mixAudio(inputFile, inserts, new File("f:\\output.wav"));
     }
+
+    public static void export(String hitSoundPath, String ahjsonPath, String outputPath) throws Exception {
+        File file = new File(hitSoundPath);
+        File inputFile = new File(Main.getRuntimePath() + File.separator + "input.wav");
+        inputFile.deleteOnExit();
+        JSONArray hitSounds = new JSONArray(new String(Files.readAllBytes(Paths.get(ahjsonPath))));
+        // 构建插入点列表（单位：采样数）
+        List<AudioInsert> inserts = new ArrayList<>();
+        for (int i = 0; i < hitSounds.length(); i++) {
+            inserts.add(new AudioInsert(hitSounds.getDouble(i) , file.toString())); // 假设44.1kHz采样率
+            if (i == hitSounds.length() - 1) {
+                createSilentWav(inputFile, hitSounds.getDouble(i)/ 1000 + 0.8);
+            }
+        }
+        // 执行混合
+        mixAudio(inputFile, inserts, new File(outputPath));
+    }
 }
