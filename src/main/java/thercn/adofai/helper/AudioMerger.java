@@ -142,34 +142,6 @@ public class AudioMerger {
             AudioSystem.write(ais, AudioFileFormat.Type.WAVE, file);
         }
     }
-
-    // 批量处理插入点
-    private static void processInserts(ByteBuffer buffer, List<AudioInsert> inserts,
-                                       AudioFormat format) throws IOException, UnsupportedAudioFileException {
-
-        // 预加载所有插入音频
-        Map<String, AudioData> clipCache = new HashMap<>();
-        for (AudioInsert insert : inserts) {
-            if (!clipCache.containsKey(insert.filePath)) {
-                clipCache.put(insert.filePath, readWav(new File(insert.filePath)));
-            }
-        }
-
-        // 并行处理插入
-        inserts.parallelStream().forEach(insert -> {
-            AudioData clip = clipCache.get(insert.filePath);
-            int pos = insert.position;
-
-            synchronized (buffer) {
-                buffer.position(pos);
-                for (int i = 0; i < clip.pcmData.length && pos + i < buffer.limit(); i++) {
-                    byte mixed = addSamples(buffer.get(pos + i), clip.pcmData[i]);
-                    buffer.put(pos + i, mixed);
-                }
-            }
-        });
-    }
-
     // 音频数据容器
     private static class AudioData {
         AudioFormat format;
