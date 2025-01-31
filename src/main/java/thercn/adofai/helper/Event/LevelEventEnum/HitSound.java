@@ -1,0 +1,31 @@
+package thercn.adofai.helper.Event.LevelEventEnum;
+
+public enum HitSound {
+    Kick,
+    Shaker,
+    Sizzle,
+    Chuck,
+    ShakerLoud,
+    None,
+    Hammer,
+    KickChroma,
+    SnareAcoustic2,
+    SideStick,
+    Stick,
+    ReverbClack,
+    SquareShot,
+    PowerDown,
+    PowerUp,
+    KickHouse,
+    KickRupture,
+    HatHouse,
+    SnareHouse,
+    SnareVapor,
+    ClapHit,
+    ClapHitEcho,
+    ReverbClap,
+    FireTile,
+    IceTile,
+    VehiclePositive,
+    VehicleNegative
+}

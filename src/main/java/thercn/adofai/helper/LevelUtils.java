@@ -238,12 +238,7 @@ public class LevelUtils {
         return noteTime;
     }
 
-    public static void runMacro(String delayTable,String keyList) throws IOException {
-        JSONArray array = new JSONArray(new String(Files.readAllBytes(Paths.get(delayTable))));
-        List<Double> list = new ArrayList<>();
-        for (int i = 0; i < array.length(); i++) {
-            list.add(array.getDouble(i));
-        }
+    public static void runMacro(List<Double> noteTime, String keyList) throws IOException {
         if (processListener != null) {
             SwingUtilities.invokeLater(() -> {
                 processListener.onProcessChange("处理完成", 100);
@@ -253,7 +248,7 @@ public class LevelUtils {
                         按Q退出""", State.FINISHED);
             });
         }
-        StartMacro start = new StartMacro(list.toArray(new Double[0]));
+        StartMacro start = new StartMacro(noteTime.toArray(new Double[0]));
         start.setKeyList(keyList);
         try {
             start.startHook();

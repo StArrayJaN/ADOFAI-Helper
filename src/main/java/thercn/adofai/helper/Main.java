@@ -11,6 +11,8 @@ import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Main extends JFrame {
@@ -22,7 +24,8 @@ public class Main extends JFrame {
     private JProgressBar progressBar;
     private JFrame consoleFrame;
     private JToggleButton toggleButton;
-    private boolean saveDelayTable = true;
+    private JCheckBox saveDelayTableCheckBox;
+    private boolean saveDelayTable = false;
     private Point initialClick = new Point(0, 0);
     private Dimension size = new Dimension(470, 100);
     private LastOpenManager lastOpenManager = LastOpenManager.getInstance();
@@ -58,6 +61,10 @@ public class Main extends JFrame {
         processButton = new JButton("运行宏");
         processButton.setBounds(150, 100, 100, 30);
         add(processButton);
+
+        saveDelayTableCheckBox = new JCheckBox("保存延迟表");
+        saveDelayTableCheckBox.setBounds(260, 60, 100, 30);
+        add(saveDelayTableCheckBox);
 
         progressBar = new JProgressBar();
         progressBar.setBounds(0, 140, getWidth(), 20);
@@ -189,17 +196,30 @@ public class Main extends JFrame {
                 enableConsole = toggleButton.isSelected();
             }
         });
+
+        saveDelayTableCheckBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (filePathField.getText().endsWith(".ahjson")) {
+                    saveDelayTableCheckBox.setSelected(false);
+                    JOptionPane.showMessageDialog(null, "请选择一个adofai文件");
+                    return;
+                }
+                saveDelayTable = saveDelayTableCheckBox.isSelected();
+            }
+        });
     }
 
     public void runMacro(String keyList, String filePath) throws Exception {
         File file = new File(filePath);
         if (!file.exists()) return;
+        List<Double> noteTimes = new ArrayList<>();
         if (file.getName().endsWith(".adofai")) {
             JSONArray delayTable = new JSONArray();
             Level level = Level.readLevelFile(file.toString());
-            var list = LevelUtils.getNoteTimes(level);
+            noteTimes = LevelUtils.getNoteTimes(level);
             if (saveDelayTable) {
-                for (var item : list) {
+                for (var item : noteTimes) {
                     delayTable.put(item);
                 }
                 try {
@@ -213,9 +233,16 @@ public class Main extends JFrame {
 
         if (file.getName().endsWith(".ahjson")) {
             genericHitSound(file.toString(),file.toString());
+            JSONArray array = new JSONArray(new String(Files.readAllBytes(file.toPath())));
+            noteTimes = new ArrayList<>();
+            for (int i = 0; i < array.length(); i++) {
+                noteTimes.add(array.getDouble(i));
+            }
         }
+
         System.out.println("运行宏:" + file);
-        LevelUtils.runMacro(file.toString(), keyList);
+
+        LevelUtils.runMacro(noteTimes, keyList);
     }
 
     public static String getLevelDirectory(Level level) {

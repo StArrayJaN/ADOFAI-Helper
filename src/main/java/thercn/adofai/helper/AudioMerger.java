@@ -213,26 +213,6 @@ public class AudioMerger {
         return (byte) Math.min(Byte.MAX_VALUE, Math.max(Byte.MIN_VALUE, b1 + b2));
     }
 
-    // 使用示例
-    public static void main(String[] args) throws Exception {
-        // 准备插入的音频片段
-
-        File file = new File("C:\\Users\\DELL\\Desktop\\Projects\\ADOPAC\\sounds\\hit.wav");
-        File inputFile = new File("F:\\input.wav");
-        JSONArray hitSounds = new JSONArray(new String(Files.readAllBytes(Paths.get("C:\\Users\\DELL\\Desktop\\Projects\\ADOFAI-Helper\\build\\libs\\delayTable.ahjson"))));
-        // 构建插入点列表（单位：采样数）
-        List<AudioInsert> inserts = new ArrayList<>();
-        for (int i = 0; i < hitSounds.length(); i++) {
-            inserts.add(new AudioInsert(hitSounds.getDouble(i) , file.toString())); // 假设44.1kHz采样率
-            if (i == hitSounds.length() - 1) {
-                createSilentWav(inputFile, hitSounds.getDouble(i)/ 1000 + 0.8);
-            }
-        }
-
-        // 执行混合
-        mixAudio(inputFile, inserts, new File("f:\\output.wav"));
-    }
-
     public static void export(String hitSoundPath, String ahjsonPath, String outputPath) throws Exception {
         File file = new File(hitSoundPath);
         File inputFile = new File(Main.getRuntimePath() + File.separator + "input.wav");
@@ -243,7 +223,7 @@ public class AudioMerger {
         for (int i = 0; i < hitSounds.length(); i++) {
             inserts.add(new AudioInsert(hitSounds.getDouble(i) , file.toString())); // 假设44.1kHz采样率
             if (i == hitSounds.length() - 1) {
-                createSilentWav(inputFile, hitSounds.getDouble(i)/ 1000 + 0.8);
+                createSilentWav(inputFile, hitSounds.getDouble(i)/ 1000 + 10);
             }
         }
         // 执行混合
