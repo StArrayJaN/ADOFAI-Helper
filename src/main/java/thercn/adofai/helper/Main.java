@@ -42,7 +42,7 @@ public class Main extends JFrame {
     private void initializeUI() {
         setTitle("ADOFAI Helper");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setMinimumSize(new Dimension(400, 200));
+        setMinimumSize(new Dimension(400, 210));
         setLayout(null);
     }
 
@@ -72,7 +72,7 @@ public class Main extends JFrame {
         add(saveDelayTableCheckBox);
 
         progressBar = new JProgressBar();
-        progressBar.setBounds(0, 140, getWidth(), 20);
+        progressBar.setBounds(0, getHeight() - 60, getWidth(), 20);
         progressBar.setMaximum(100);
         progressBar.setVisible(false);
         add(progressBar);
