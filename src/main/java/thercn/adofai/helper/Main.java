@@ -10,6 +10,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -29,13 +30,13 @@ public class Main extends JFrame {
     private Point initialClick = new Point(0, 0);
     private Dimension size = new Dimension(470, 100);
     private LastOpenManager lastOpenManager = LastOpenManager.getInstance();
+    private GradientLabel author;
     public static boolean enableConsole = false;
 
     public Main() throws IOException {
         initializeUI();
         addComponents();
         addListeners();
-
     }
 
     private void initializeUI() {
@@ -61,6 +62,10 @@ public class Main extends JFrame {
         processButton = new JButton("运行宏");
         processButton.setBounds(150, 100, 100, 30);
         add(processButton);
+
+        author = new GradientLabel("By: StArray", GradientLabel.getRainbowColors(), 40, GradientLabel.GradientDirection.LEFT_TO_RIGHT);
+        author.setBounds(0, 130, getWidth(), 20);
+        add(author);
 
         saveDelayTableCheckBox = new JCheckBox("保存延迟表");
         saveDelayTableCheckBox.setBounds(260, 60, 100, 30);
@@ -206,6 +211,17 @@ public class Main extends JFrame {
                     return;
                 }
                 saveDelayTable = saveDelayTableCheckBox.isSelected();
+            }
+        });
+
+        author.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                try {
+                    Desktop.getDesktop().browse(URI.create("https://space.bilibili.com/425111197"));
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
             }
         });
     }
