@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -334,12 +335,18 @@ public class Main extends JFrame {
     }
 
     public static void genericHitSound(String string,String ahjson) throws Exception {
-        exportResources("hit.wav");
-        File file = new File(getRuntimePath(), "hit.wav");
-        AudioMerger.export(file.toString(), ahjson, new File(string).getParent() + File.separator + "hitSound.wav");
+        exportResources("kick.wav");
+        File file = new File(getRuntimePath(), "kick.wav");
+        var objectList = (new JSONArray(new String(Files.readAllBytes(Path.of(ahjson)))).toList());
+        List<Double> ahjsonList = new ArrayList<>();
+        for (Object o : objectList) {
+            ahjsonList.add(Double.parseDouble(o.toString()));
+        }
+        AudioMerger.export(file.toString(), ahjsonList, new File(string).getParent() + File.separator + "HitSounds.wav");
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
+        LevelUtils.toAngleData(Level.readLevelFile("C:\\Users\\DELL\\Desktop\\magic.adofai"));
         FlatLaf.setup(new FlatMacDarkLaf());
         SwingUtilities.invokeLater(() -> {
             try {

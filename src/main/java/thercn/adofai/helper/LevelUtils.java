@@ -358,6 +358,7 @@ public class LevelUtils {
             switch (nativeEvent.getKeyCode()) {
                 case NativeKeyEvent.VC_W:
                     thread.start();
+                    if (AudioMerger.audioClip != null) AudioMerger.audioClip.start();
                     break;
                 case NativeKeyEvent.VC_LEFT:
                     offset -= 5;
@@ -367,6 +368,7 @@ public class LevelUtils {
                     break;
                 case NativeKeyEvent.VC_Q:
                     breaked = true;
+                    if (AudioMerger.audioClip != null) AudioMerger.audioClip.stop();
                     thread.interrupt();
                     if (processListener != null) {
                         processListener.onProcessDone("已退出",State.STOPPED);
@@ -388,6 +390,16 @@ public class LevelUtils {
             events++;
         }
         return delayTable;
+    }
+
+    public static void toAngleData(Level level) throws  IOException {
+        JSONArray array = new JSONArray();
+        for (int i = 0; i < level.getCharts().size(); i++) {
+            array.put(level.getCharts().get(i));
+        }
+        level.level.remove("pathData");
+        level.level.put("angleData", array);
+        level.saveFile(level.currentLevelFile.replace(".adofai","_ad.adofai"));
     }
 
     private static double currentTime() {

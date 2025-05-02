@@ -6,6 +6,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,38 +36,38 @@ public class Level {
         }
     }
 
-    public static Level readLevelFile(String filePath) throws IOException {
-        File file = new File(filePath);
-        BufferedReader reader = new BufferedReader(new InputStreamReader(Files.newInputStream(file.toPath()), "UTF-8"));
-        StringBuilder content = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            content.append(line + "\n");
-        }
-        reader.close();
-        int i = content.toString().indexOf("{");
-        String newJSONStr = content.toString().substring(i);
+    public static Level readLevelFile(String filePath)  {
+        String content = null;
         try {
-        	new JSONObject(newJSONStr);
-        } catch(Exception e) {
-        	if (e instanceof JSONException) {
-				String str = e.getMessage();
-				int start = 0;
-				while (start < str.length() && !Character.isDigit(str.charAt(start))) {
-					start++;
-				}
+            content = new String(Files.readAllBytes(Paths.get(filePath)))
+                    .replaceAll("\"Enabled\"", "true")
+                    .replaceAll("\"Disabled\"", "false");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        int i = content.indexOf("{");
+        String newJSONStr = content.substring(i);
+        try {
+            new JSONObject(newJSONStr);
+        } catch (Exception e) {
+            if (e instanceof JSONException) {
+                String str = e.getMessage();
+                int start = 0;
+                while (start < str.length() && !Character.isDigit(str.charAt(start))) {
+                    start++;
+                }
 
-				int end = start;
-				while (end < str.length() && Character.isDigit(str.charAt(end))) {
-					end++;
-				}
+                int end = start;
+                while (end < str.length() && Character.isDigit(str.charAt(end))) {
+                    end++;
+                }
 
-				String numberStr = str.substring(start, end);
-				int number = Integer.parseInt(numberStr) - 2;
+                String numberStr = str.substring(start, end);
+                int number = Integer.parseInt(numberStr) - 2;
                 StringBuilder sb = new StringBuilder(newJSONStr);
-                sb.insert(number,",");
+                sb.insert(number, ",");
                 newJSONStr = sb.toString();
-			}
+            }
         }
         Level level = new Level(new JSONObject(newJSONStr));
         level.currentLevelFile = filePath;
@@ -85,6 +86,10 @@ public class Level {
         //预处理，有需要则在main方法进行更多处理
 		JSONArray charts = null;
 		String pathData = "RRRRRRRRRR";
+        /*for (String key : level.keySet()) {
+            System.out.println(key);
+        }*/
+        System.out.println(level);
 		try {
 			charts = level.getJSONArray("angleData");
 		} catch(JSONException e)
