@@ -7,10 +7,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -100,11 +98,10 @@ public class Level {
         List<Double> chartArray = new ArrayList<>();
 		
         if (charts == null) {
-            List<TileAngle> parsedPathData = new ArrayList<>();
-			for (int i = 0; i < pathData.length(); i++) {
-				char c = pathData.charAt(i);
-				parsedPathData.add(TileAngle.angleCharMap.get(c));
-			}
+            List<TileAngle> parsedPathData = toList(pathData.toCharArray())
+                    .stream()
+                    .map(TileAngle.angleCharMap::get)
+                    .toList();
             double staticAngle = 0d;
 
             for (TileAngle angle : parsedPathData) {
@@ -127,6 +124,14 @@ public class Level {
             chartArray.add(chart);
         }
         return chartArray;
+    }
+
+    public List<Character> toList(char... chars) {
+        List<Character> list = new ArrayList<>();
+        for (char c : chars) {
+            list.add(c);
+        }
+        return list;
     }
 
     public double getBPM() throws JSONException {

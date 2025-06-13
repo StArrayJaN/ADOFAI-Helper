@@ -346,7 +346,6 @@ public class Main extends JFrame {
     }
 
     public static void main(String[] args) throws IOException {
-        LevelUtils.toAngleData(Level.readLevelFile("C:\\Users\\DELL\\Desktop\\magic.adofai"));
         FlatLaf.setup(new FlatMacDarkLaf());
         SwingUtilities.invokeLater(() -> {
             try {
